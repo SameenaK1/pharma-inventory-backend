@@ -12,19 +12,19 @@ module.exports = class User {
   // Helper method to ensure the schema and table exist before any operation
   static async ensureTableExists() {
     // 1. Create the schema if it doesn't exist
-    const createSchemaQuery = `CREATE SCHEMA IF NOT EXISTS Pharma_Inventry_Management;`;
+    const createSchemaQuery = `CREATE SCHEMA IF NOT EXISTS pharma;`;
     await db.query(createSchemaQuery);
 
     // 2. Create the table if it doesn't exist
     const createTableQuery = `
-      CREATE TABLE IF NOT EXISTS Pharma_Inventry_Management.user (
+      CREATE TABLE IF NOT EXISTS pharma.user (
         id SERIAL PRIMARY KEY,
         fullname VARCHAR(100) NOT NULL,
         username VARCHAR(50) UNIQUE NOT NULL,
         email VARCHAR(100) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
-        lastLogin TIMESTAMP,
-        loggedIn VARCHAR(10) DEFAULT 'False',
+        lastLogin TIMESTAMP WITH TIME ZONE,
+        loggedIn BOOLEAN DEFAULT FALSE,
         loginCount INT DEFAULT 0
       );
     `;
@@ -37,7 +37,7 @@ module.exports = class User {
 
     // PostgreSQL uses $1, $2, $3 placeholders instead of ?
     const query = `
-      INSERT INTO Pharma_Inventry_Management.user (fullname, username, email, password) 
+      INSERT INTO pharma.user (fullname, username, email, password) 
       VALUES ($1, $2, $3, $4) RETURNING *;
     `;
     // Using db.query (assuming your utils/database uses the standard 'pg' pool.query mapping)
@@ -48,7 +48,7 @@ module.exports = class User {
     await User.ensureTableExists();
 
     const query = `
-      UPDATE Pharma_Inventry_Management.user 
+      UPDATE pharma.user 
       SET lastLogin = CURRENT_TIMESTAMP, loggedIn = 'True', loginCount = loginCount + 1 
       WHERE email = $1;
     `;
@@ -58,14 +58,14 @@ module.exports = class User {
   static async findOne(email) {
     await User.ensureTableExists();
 
-    const query = `SELECT id, password, username FROM Pharma_Inventry_Management.user WHERE email = $1;`;
+    const query = `SELECT id, password, username FROM pharma.user WHERE email = $1;`;
     return db.query(query, [email]);
   }
 
   static async findOneByID(id) {
     await User.ensureTableExists();
 
-    const query = `SELECT id, password, username FROM Pharma_Inventry_Management.user WHERE id = $1;`;
+    const query = `SELECT id, password, username FROM pharma.user WHERE id = $1;`;
     return db.query(query, [id]);
   }
 
@@ -73,7 +73,7 @@ module.exports = class User {
     await User.ensureTableExists();
 
     // Critical Fix: Added 'WHERE id = $1' so you don't log out EVERY user in your database!
-    const query = `UPDATE Pharma_Inventry_Management.user SET loggedIn = 'False' WHERE id = $1;`;
+    const query = `UPDATE pharma.user SET loggedIn = 'False' WHERE id = $1;`;
     return db.query(query, [id]);
   }
 };
