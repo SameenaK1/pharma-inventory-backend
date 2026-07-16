@@ -2,7 +2,7 @@ name: Hugging Face PR Reviewer
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, reopened, synchronize]
   issue_comment:
     types: [created]
 
@@ -26,16 +26,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
-          # 1. Provide BOTH key formats to bypass the strict OpenAI validation check
+          # Authentication variables
           OPENAI_API_KEY: ${{ secrets.HF_TOKEN }}
           OPENAI_KEY: ${{ secrets.HF_TOKEN }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
           
-          # 2. Add the custom LLM provider indicator so LiteLLM maps the keys correctly
+          # Force LiteLLM to interpret endpoint structure natively
           LITELM_CUSTOM_LLM_PROVIDER: "huggingface"
-          
-          # 3. Use the OpenAI-compatible Hugging Face Router endpoint
           OPENAI_API_BASE: "https://api-inference.huggingface.co/v1/"
-          
-          # 4. Use your Hugging Face model
           OPENAI_MODEL: "meta-llama/Meta-Llama-3-70B-Instruct"
+          
+          # CRUCIAL: Tells the agent to actively execute the review tool
+          # and forces it to run on push events ('synchronize')
+          PR_ACTION: "/review"
+          github_action.auto_review: "true"
