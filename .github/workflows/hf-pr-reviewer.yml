@@ -26,16 +26,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
-          # Authentication variables
+          # Authentication tokens
           OPENAI_API_KEY: ${{ secrets.HF_TOKEN }}
           OPENAI_KEY: ${{ secrets.HF_TOKEN }}
           
-          # Force LiteLLM to interpret endpoint structure natively
+          # Force LiteLLM routing
           LITELM_CUSTOM_LLM_PROVIDER: "huggingface"
           OPENAI_API_BASE: "https://api-inference.huggingface.co/v1/"
-          OPENAI_MODEL: "meta-llama/Meta-Llama-3-70B-Instruct"
           
-          # CRUCIAL: Tells the agent to actively execute the review tool
-          # and forces it to run on push events ('synchronize')
+          # CRUCIAL: Overriding pr-agent's hardcoded default config maps
+          CONFIG_CONFIG_MODEL: "meta-llama/Meta-Llama-3-70B-Instruct"
+          CONFIG_CONFIG_FALLBACK_MODELS: "['meta-llama/Meta-Llama-3-70B-Instruct']"
+          
+          # Action triggers
           PR_ACTION: "/review"
           github_action.auto_review: "true"
