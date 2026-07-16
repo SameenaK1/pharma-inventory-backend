@@ -3,7 +3,6 @@ name: Hugging Face PR Reviewer
 on:
   pull_request:
     types: [opened, synchronize]
-  # Recommended: This allows you to trigger commands via PR comments
   issue_comment:
     types: [created]
 
@@ -14,7 +13,6 @@ permissions:
 
 jobs:
   review:
-    # This check ensures the workflow doesn't trigger on its own bot actions
     if: ${{ github.event.sender.type != 'Bot' }}
     runs-on: ubuntu-latest
     steps:
@@ -27,6 +25,17 @@ jobs:
         uses: Codium-ai/pr-agent@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+          # 1. Provide BOTH key formats to bypass the strict OpenAI validation check
           OPENAI_API_KEY: ${{ secrets.HF_TOKEN }}
+          OPENAI_KEY: ${{ secrets.HF_TOKEN }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          
+          # 2. Add the custom LLM provider indicator so LiteLLM maps the keys correctly
+          LITELM_CUSTOM_LLM_PROVIDER: "huggingface"
+          
+          # 3. Use the OpenAI-compatible Hugging Face Router endpoint
           OPENAI_API_BASE: "https://api-inference.huggingface.co/v1/"
+          
+          # 4. Use your Hugging Face model
           OPENAI_MODEL: "meta-llama/Meta-Llama-3-70B-Instruct"
