@@ -26,18 +26,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
-          # Authentication tokens
+          # Authentication
           OPENAI_API_KEY: ${{ secrets.HF_TOKEN }}
           OPENAI_KEY: ${{ secrets.HF_TOKEN }}
           
-          # Force LiteLLM routing
-          LITELM_CUSTOM_LLM_PROVIDER: "huggingface"
-          OPENAI_API_BASE: "https://api-inference.huggingface.co/v1/"
+          # Force LiteLLM to use the OpenAI-compatible Hugging Face endpoint
+          LITELM_CUSTOM_LLM_PROVIDER: "openai"
+          OPENAI_API_BASE: "https://api-inference.huggingface.co/v1"
           
-          # CRUCIAL: Overriding pr-agent's hardcoded default config maps
-          CONFIG_CONFIG_MODEL: "meta-llama/Meta-Llama-3-70B-Instruct"
-          CONFIG_CONFIG_FALLBACK_MODELS: "['meta-llama/Meta-Llama-3-70B-Instruct']"
+          # Global fallback structures that override pr-agent configurations completely
+          CONFIG_MODEL: "meta-llama/Meta-Llama-3-70B-Instruct"
+          CONFIG_FALLBACK_MODELS: "['meta-llama/Meta-Llama-3-70B-Instruct']"
           
-          # Action triggers
+          # Explicit tool overrides to ensure it updates the specific /review modules
+          PR_REVIEWER_MODEL: "meta-llama/Meta-Llama-3-70B-Instruct"
+          
+          # Workflow directives
           PR_ACTION: "/review"
           github_action.auto_review: "true"
