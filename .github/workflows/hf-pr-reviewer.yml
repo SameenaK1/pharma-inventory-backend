@@ -3,14 +3,19 @@ name: Hugging Face PR Reviewer
 on:
   pull_request:
     types: [opened, synchronize]
+  # Recommended: This allows you to trigger commands via PR comments
+  issue_comment:
+    types: [created]
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
   issues: write
 
 jobs:
   review:
+    # This check ensures the workflow doesn't trigger on its own bot actions
+    if: ${{ github.event.sender.type != 'Bot' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -23,5 +28,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.HF_TOKEN }}
-          OPENAI_API_BASE: "https://api-inference.huggingface.co/v1"
+          OPENAI_API_BASE: "https://api-inference.huggingface.co/v1/"
           OPENAI_MODEL: "meta-llama/Meta-Llama-3-70B-Instruct"
