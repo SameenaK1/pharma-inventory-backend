@@ -10,6 +10,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  statuses: write
 
 jobs:
   review:
@@ -24,23 +25,12 @@ jobs:
       - name: Run PR Reviewer Agent
         uses: Codium-ai/pr-agent@main
         env:
+          # Double-check that this is exactly matched
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
-          # Authentication
           OPENAI_API_KEY: ${{ secrets.HF_TOKEN }}
           OPENAI_KEY: ${{ secrets.HF_TOKEN }}
-          
-          # Force LiteLLM to use the OpenAI-compatible Hugging Face endpoint
-          LITELM_CUSTOM_LLM_PROVIDER: "openai"
           OPENAI_API_BASE: "https://api-inference.huggingface.co/v1"
           
-          # Global fallback structures that override pr-agent configurations completely
-          CONFIG_MODEL: "meta-llama/Meta-Llama-3-70B-Instruct"
-          CONFIG_FALLBACK_MODELS: "['meta-llama/Meta-Llama-3-70B-Instruct']"
-          
-          # Explicit tool overrides to ensure it updates the specific /review modules
-          PR_REVIEWER_MODEL: "meta-llama/Meta-Llama-3-70B-Instruct"
-          
-          # Workflow directives
+          # Flow control commands
           PR_ACTION: "/review"
           github_action.auto_review: "true"
