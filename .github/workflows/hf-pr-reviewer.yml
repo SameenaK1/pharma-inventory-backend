@@ -4,6 +4,12 @@ on:
   pull_request:
     types: [opened, synchronize]
 
+# 👇 ADD THIS BLOCK TO ENABLE WRITING COMMENTS
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   review:
     runs-on: ubuntu-latest
@@ -14,8 +20,8 @@ jobs:
           fetch-depth: 0
 
       - name: Run PR Reviewer Agent
-        uses: Codium-ai/pr-agent@main # Or a specialized Hugging Face action bridge
+        uses: Codium-ai/pr-agent@main
         env:
-          OPENAI_API_KEY: ${{ secrets.HF_TOKEN }} # Many PR agents accept HF via OpenAI-compatibility layers
+          OPENAI_API_KEY: ${{ secrets.HF_TOKEN }}
           OPENAI_API_BASE: "https://api-inference.huggingface.co/v1" 
           CONFIG.MODEL: "meta-llama/Meta-Llama-3-70B-Instruct"
