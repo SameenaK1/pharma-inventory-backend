@@ -1,0 +1,21 @@
+name: Hugging Face PR Reviewer
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run PR Reviewer Agent
+        uses: Codium-ai/pr-agent@main # Or a specialized Hugging Face action bridge
+        env:
+          OPENAI_API_KEY: ${{ secrets.HF_TOKEN }} # Many PR agents accept HF via OpenAI-compatibility layers
+          OPENAI_API_BASE: "https://api-inference.huggingface.co/v1" 
+          CONFIG.MODEL: "meta-llama/Meta-Llama-3-70B-Instruct"
