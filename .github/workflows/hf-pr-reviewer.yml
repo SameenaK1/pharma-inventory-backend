@@ -4,7 +4,6 @@ on:
   pull_request:
     types: [opened, synchronize]
 
-# 👇 ADD THIS BLOCK TO ENABLE WRITING COMMENTS
 permissions:
   contents: read
   pull-requests: write
@@ -22,6 +21,7 @@ jobs:
       - name: Run PR Reviewer Agent
         uses: Codium-ai/pr-agent@main
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.HF_TOKEN }}
-          OPENAI_API_BASE: "https://api-inference.huggingface.co/v1" 
-          CONFIG.MODEL: "meta-llama/Meta-Llama-3-70B-Instruct"
+          OPENAI_API_BASE: "https://api-inference.huggingface.co/v1"
+          OPENAI_MODEL: "meta-llama/Meta-Llama-3-70B-Instruct"
