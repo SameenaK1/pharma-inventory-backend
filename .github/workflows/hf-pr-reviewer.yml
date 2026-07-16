@@ -39,3 +39,6 @@ jobs:
           
           # 4. Use your Hugging Face model
           OPENAI_MODEL: "meta-llama/Meta-Llama-3-70B-Instruct"
+          # Flow control commands
+          PR_ACTION: "/review"
+          github_action.auto_review: "true"
