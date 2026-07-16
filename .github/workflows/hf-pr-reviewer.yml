@@ -26,19 +26,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
-          # 1. Provide BOTH key formats to bypass the strict OpenAI validation check
+          # Pass the Hugging Face token as the standard OpenAI API Key
           OPENAI_API_KEY: ${{ secrets.HF_TOKEN }}
-          OPENAI_KEY: ${{ secrets.HF_TOKEN }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
           
-          # 2. Add the custom LLM provider indicator so LiteLLM maps the keys correctly
-          LITELM_CUSTOM_LLM_PROVIDER: "huggingface"
+          # REMOVED trailing slash to prevent malformed endpoint URLs
+          OPENAI_API_BASE: "https://api-inference.huggingface.co/v1"
           
-          # 3. Use the OpenAI-compatible Hugging Face Router endpoint
-          OPENAI_API_BASE: "https://api-inference.huggingface.co/v1/"
+          # PREPENDED 'openai/' to force LiteLLM to use the custom base URL smoothly
+          OPENAI_MODEL: "openai/meta-llama/Meta-Llama-3-70B-Instruct"
           
-          # 4. Use your Hugging Face model
-          OPENAI_MODEL: "meta-llama/Meta-Llama-3-70B-Instruct"
           # Flow control commands
           PR_ACTION: "/review"
           github_action.auto_review: "true"
