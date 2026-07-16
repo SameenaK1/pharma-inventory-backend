@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const validate = require("validator");
-
+// added comment
 const User = require("../models/User");
 const createToken = require("../token");
 exports.signUp = async (req, res, next) => {
