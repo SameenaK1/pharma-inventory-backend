@@ -1,8 +1,9 @@
+
 const express = require("express");
 const userRoutes = require("./routes/user");
+const medicineRoutes = require("./routes/medicine");
 const app = express();
 const bodyParser = require("body-parser");
-
 const PORT = `8080`;
 
 const conn = require("./database");
@@ -18,7 +19,7 @@ app.use((req, res, next) => {
 app.use(bodyParser.json());
 
 app.use("/user/",userRoutes);
-
+app.use("/medicine/", medicineRoutes);
 app.listen(PORT, () => {
   console.log(`🚀 Application Started at http://localhost:${PORT}/`);
 });
