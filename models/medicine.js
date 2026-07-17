@@ -62,6 +62,21 @@ class Medicine {
       this.composition2,
     ]);
   }
+
+  static async searchMedicineNames(searchTerm) {
+    // Ensure table exists first
+    await Medicine.ensureTableExists();
+
+    const query = `
+      SELECT id, name, manufacturer_name, type, pack_size_label, composition1, composition2
+      FROM pharma.medicine_raw
+      WHERE LOWER(name) LIKE LOWER($1)
+      ORDER BY name ASC;
+    `;
+
+    const searchPattern = `%${searchTerm}%`;
+    return db.query(query, [searchPattern]);
+  }
 }
 
 module.exports = Medicine;

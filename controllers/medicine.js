@@ -32,3 +32,38 @@ exports.addMedicine = async (req, res, next) => {
     return res.status(500).json({ error: err.message });
   }
 };
+
+exports.searchMedicineNames = async (req, res, next) => {
+  const searchTerm = req.query.name;
+
+  // Input validation
+  if (!searchTerm || searchTerm.trim() === '') {
+    return res.status(400).json({ error: "Search term is required" });
+  }
+
+  if (searchTerm.length < 2) {
+    return res.status(400).json({ error: "Search term must be at least 2 characters long" });
+  }
+
+  try {
+    const response = await Medicine.searchMedicineNames(searchTerm);
+    const medicines = response[0] || [];
+
+    if (medicines.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No medicines found matching "${searchTerm}"`,
+        data: []
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Found ${medicines.length} medicine(s) matching "${searchTerm}"`,
+      data: medicines
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
+  }
+};
