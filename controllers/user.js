@@ -1,6 +1,5 @@
 const bcrypt = require("bcrypt");
 const validate = require("validator");
-
 const User = require("../models/User");
 const createToken = require("../token");
 exports.signUp = async (req, res, next) => {
@@ -19,7 +18,6 @@ exports.signUp = async (req, res, next) => {
     return res.status(400).json({ error: "Value Error: Invalid Eamil" });
   }
   if (!validate.isStrongPassword(password)) {
-    console.log(validate.isStrongPassword(password));
     console.error("Value Error: Invalid Password");
     return res.status(400).json({ error: "Value Error:Password is not strong enough!!!" });
   }
@@ -36,8 +34,8 @@ exports.signUp = async (req, res, next) => {
       res.status(200).json({ username: username, token: token });
     })
     .catch((err) => {
-      console.log(err);
-      res.status(300).json({ error: err.message });
+      console.error(err);
+      res.status(400).json({ error: err.message });
     });
 };
 
@@ -57,7 +55,7 @@ exports.logIn = async (req, res, next) => {
   User.findOne(email)
     .then(async (respose) => {
       if (!respose[0].length) {
-        res.status(300).json({ error: "No account for the Email found" });
+        res.status(400).json({ error: "No account for the Email found" });
       } else {
         let pass = respose[0][0].password;
         const match = await bcrypt.compare(password, pass);
@@ -65,7 +63,7 @@ exports.logIn = async (req, res, next) => {
           const token = createToken(respose[0][0].id, respose[0][0].username, email);
           res.status(200).json({ username: respose[0][0].username, token: token });
         } else {
-          res.status(300).json({ error: `Incorrect password for Username: ${respose[0][0].username}` });
+          res.status(400).json({ error: `Incorrect password for Username: ${respose[0][0].username}` });
         }
       }
     })
