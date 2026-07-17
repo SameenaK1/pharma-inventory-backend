@@ -34,8 +34,9 @@ exports.addMedicine = async (req, res, next) => {
 };
 
 exports.searchMedicineNames = async (req, res, next) => {
-  const searchTerm = req.query.name;
-
+ 
+  const searchTerm = req.body.name;
+  
   // Input validation
   if (!searchTerm || searchTerm.trim() === '') {
     return res.status(400).json({ error: "Search term is required" });
@@ -47,7 +48,7 @@ exports.searchMedicineNames = async (req, res, next) => {
 
   try {
     const response = await Medicine.searchMedicineNames(searchTerm);
-    const medicines = response[0] || [];
+    const medicines = response || [];
 
     if (medicines.length === 0) {
       return res.status(404).json({

@@ -75,7 +75,8 @@ class Medicine {
     `;
 
     const searchPattern = `%${searchTerm}%`;
-    return db.query(query, [searchPattern]);
+    const result = await db.query(query, [searchPattern]);
+    return result.rows;
   }
 }
 
