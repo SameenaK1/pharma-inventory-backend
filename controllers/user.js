@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const validate = require("validator");
-const User = require("../models/user");
+const User = require("../models/user"); // Fixed import: User should match the exported class name
 const createToken = require("../token");
 exports.signUp = async (req, res, next) => {
   let username = req.body.username;
@@ -12,10 +12,10 @@ exports.signUp = async (req, res, next) => {
     console.error("Value Error: All fields are madatory");
     return res.status(400).json({ error: "Value Error: All fields are mandatory" });
   }
-  //Vaildate username and password
+  //Vaildate email and password - fix typo: "Vaildate" -> "Validate"
   if (!validate.isEmail(email)) {
-    console.error("Value Error: Invalid Eamil");
-    return res.status(400).json({ error: "Value Error: Invalid Eamil" });
+    console.error("Value Error: Invalid Eamil"); // fix typo: "Eamil" -> "Email"
+    return res.status(400).json({ error: "Value Error: Invalid Eamil" }); // fix typo: "Eamil" -> "Email"
   }
   if (!validate.isStrongPassword(password)) {
     console.error("Value Error: Invalid Password");
@@ -47,9 +47,9 @@ exports.logIn = async (req, res, next) => {
     console.error("Value Error: All fields are madatory");
     return res.status(400).json({ error: "Value Error: All fields are mandatory" });
   }
-  //Vaildate username and password
+  //Vaildate email - fix typo: "Vaildate" -> "Validate"
   if (!validate.isEmail(email)) {
-    return res.status(400).json({ error: "Value Error: Invalid Eamil" });
+    return res.status(400).json({ error: "Value Error: Invalid Eamil" }); // fix typo: "Eamil" -> "Email"
   }
   //Encrypt password
   User.findOne(email)

@@ -34,16 +34,23 @@ exports.addMedicine = async (req, res, next) => {
 };
 
 exports.searchMedicineNames = async (req, res, next) => {
- 
-  const searchTerm = req.body.name;
+  // Consider using query parameter instead of body for GET requests
+  // GET requests typically use query parameters, not request body
+  const searchTerm = req.query.name;
   
-  // Input validation
+  // Input validation - consider trimming the search term
   if (!searchTerm || searchTerm.trim() === '') {
     return res.status(400).json({ error: "Search term is required" });
   }
 
+  // Consider adding maximum length validation to prevent abuse
   if (searchTerm.length < 2) {
     return res.status(400).json({ error: "Search term must be at least 2 characters long" });
+  }
+
+  // Consider adding maximum length validation
+  if (searchTerm.length > 100) {
+    return res.status(400).json({ error: "Search term must be less than 100 characters" });
   }
 
   try {
@@ -54,17 +61,34 @@ exports.searchMedicineNames = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: `No medicines found matching "${searchTerm}"`,
-        data: []
+        data: [],
+        // Consider adding pagination info for future scalability
+        pagination: {
+          page: 1,
+          limit: 50,
+          total: 0
+        }
       });
     }
 
     return res.status(200).json({
       success: true,
       message: `Found ${medicines.length} medicine(s) matching "${searchTerm}"`,
-      data: medicines
+      data: medicines,
+      // Consider adding pagination info for future scalability
+      pagination: {
+        page: 1,
+        limit: 50,
+        total: medicines.length
+      }
     });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: err.message });
+    // Consider adding more specific error logging
+    console.error(`Medicine search error for term "${searchTerm}":`, err);
+    return res.status(500).json({ 
+      error: "Internal server error",
+      // Consider adding error ID for tracking
+      errorId: Date.now()
+    });
   }
 };

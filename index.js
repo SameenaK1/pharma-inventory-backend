@@ -20,6 +20,13 @@ app.use(bodyParser.json());
 
 app.use("/user/",userRoutes);
 app.use("/medicine/", medicineRoutes);
+
+// Consider adding proper error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: "Something went wrong!" });
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Application Started at http://localhost:${PORT}/`);
 });
