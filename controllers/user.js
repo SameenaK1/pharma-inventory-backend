@@ -9,17 +9,17 @@ exports.signUp = async (req, res, next) => {
   let password = req.body.password;
 
   if (!(username && fullname && email && password)) {
-    console.error("Value Error: All fields are madatory");
+    console.error("Value Error: All fields are mandatory");
     return res.status(400).json({ error: "Value Error: All fields are mandatory" });
   }
   //Vaildate username and password
   if (!validate.isEmail(email)) {
-    console.error("Value Error: Invalid Eamil");
-    return res.status(400).json({ error: "Value Error: Invalid Eamil" });
+    console.error("Value Error: Invalid Email");
+    return res.status(400).json({ error: "Value Error: Invalid Email" });
   }
   if (!validate.isStrongPassword(password)) {
     console.error("Value Error: Invalid Password");
-    return res.status(400).json({ error: "Value Error:Password is not strong enough!!!" });
+    return res.status(400).json({ error: "Value Error: Password is not strong enough!!!" });
   }
 
   //Encrypt password
@@ -44,31 +44,34 @@ exports.logIn = async (req, res, next) => {
   let password = req.body.password;
 
   if (!(email && password)) {
-    console.error("Value Error: All fields are madatory");
+    console.error("Value Error: All fields are mandatory");
     return res.status(400).json({ error: "Value Error: All fields are mandatory" });
   }
   //Vaildate username and password
   if (!validate.isEmail(email)) {
-    return res.status(400).json({ error: "Value Error: Invalid Eamil" });
+    return res.status(400).json({ error: "Value Error: Invalid Email" });
   }
   //Encrypt password
   User.findOne(email)
-    .then(async (respose) => {
-      if (!respose[0].length) {
+    .then(async (response) => {
+      if (!response[0].length) {
         res.status(400).json({ error: "No account for the Email found" });
       } else {
-        let pass = respose[0][0].password;
+        let pass = response[0][0].password;
         const match = await bcrypt.compare(password, pass);
         if (match) {
-          const token = createToken(respose[0][0].id, respose[0][0].username, email);
-          res.status(200).json({ username: respose[0][0].username, token: token });
+          const token = createToken(response[0][0].id, response[0][0].username, email);
+          res.status(200).json({ username: response[0][0].username, token: token });
         } else {
-          res.status(400).json({ error: `Incorrect password for Username: ${respose[0][0].username}` });
+          res.status(400).json({ error: `Incorrect password for Username: ${response[0][0].username}` });
         }
       }
     })
     .then(() => {
       User.logged_in(email);
     })
-    .catch((err) => res.status(400).json({ error: err }));
+    .catch((err) => {
+      console.error(err);
+      res.status(400).json({ error: err.message });
+    });
 };
