@@ -11,10 +11,33 @@ class Medicine {
     this.composition2 = composition2;
   }
 
-  async addmedicine() {
-    console.log(`inserting medicine into database ${this.name}`);
+  // Helper method to ensure the schema and table exist before any operation
+  static async ensureTableExists() {
+    // 1. Create the schema if it doesn't exist
+    const createSchemaQuery = `CREATE SCHEMA IF NOT EXISTS pharma;`;
+    await db.query(createSchemaQuery);
+
+    // 2. Create the table if it doesn't exist
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS pharma.medicine_raw (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        manufacturer_name VARCHAR(100) NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        pack_size_label VARCHAR(100),
+        composition1 TEXT,
+        composition2 TEXT
+      );
+    `;
+    await db.query(createTableQuery);
+  }
+
+  async addMedicine() {
+    // Ensure table exists first
+    await Medicine.ensureTableExists();
+
     const query = `
-      INSERT INTO medicine_raw (
+      INSERT INTO pharma.medicine_raw (
         id,
         name,
         manufacturer_name,

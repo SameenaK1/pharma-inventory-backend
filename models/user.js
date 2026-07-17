@@ -49,7 +49,7 @@ module.exports = class User {
 
     const query = `
       UPDATE pharma.user 
-      SET lastLogin = CURRENT_TIMESTAMP, loggedIn = 'True', loginCount = loginCount + 1 
+      SET lastLogin = CURRENT_TIMESTAMP, loggedIn = true, loginCount = loginCount + 1 
       WHERE email = $1;
     `;
     return db.query(query, [email]);
@@ -72,8 +72,7 @@ module.exports = class User {
   static async log_out(id) {
     await User.ensureTableExists();
 
-    // Critical Fix: Added 'WHERE id = $1' so you don't log out EVERY user in your database!
-    const query = `UPDATE pharma.user SET loggedIn = 'False' WHERE id = $1;`;
+    const query = `UPDATE pharma.user SET loggedIn = false WHERE id = $1;`;
     return db.query(query, [id]);
   }
 };
