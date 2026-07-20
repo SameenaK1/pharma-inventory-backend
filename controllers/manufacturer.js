@@ -1,13 +1,22 @@
 const validate = require("validator");
-const Menufacturer = require("../models/manufacturer");
+const Manufacturer  = require("../models/manufacturer");
 const createToken = require("../token");
 
 exports.searchManufacturerNames = async (req, res, next) => {
   const searchTerm = req.query.name;
   console.log("searchTerm", searchTerm);
 
+  // Validate search term length
+  if (!searchTerm || searchTerm.trim().length < 3) {
+    return res.status(400).json({
+      success: false,
+      message: "Search term must be at least 3 characters long",
+      data: [],
+    });
+  }
+
   try {
-    const response = await Menufacturer.searchManufacturerNames(searchTerm);
+    const response = await Manufacturer.searchManufacturerNames(searchTerm);
     const manufacturers = response || [];
 
     if (manufacturers.length === 0) {
@@ -15,11 +24,7 @@ exports.searchManufacturerNames = async (req, res, next) => {
         success: false,
         message: `No manufacturers found matching "${searchTerm}"`,
         data: [],
-        pagination: {
-          page: 1,
-          limit: 50,
-          total: 0
-        }
+       
       });
     }
 
@@ -27,19 +32,12 @@ exports.searchManufacturerNames = async (req, res, next) => {
       success: true,
       message: `Found ${manufacturers.length} manufacturer(s) matching "${searchTerm}"`,
       data: manufacturers,
-      // Consider adding pagination info for future scalability
-      pagination: {
-        page: 1,
-        limit: 50,
-        total: manufacturers.length
-      }
+     
     });
   } catch (err) {
-    // Consider adding more specific error logging
     console.error(`Manufacturer search error for term "${searchTerm}":`, err);
     return res.status(500).json({ 
       error: "Internal server error",
-      // Consider adding error ID for tracking
       errorId: Date.now()
     });
   }
