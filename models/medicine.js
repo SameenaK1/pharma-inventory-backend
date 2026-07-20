@@ -4,9 +4,9 @@ class Medicine {
   constructor(id, name, manufacturerName, type, packSizeLabel, composition1, composition2) {
     this.id = id;
     this.name = name;
-    this.manufacturer_name = manufacturerName;
+    this.manufacturerName  = manufacturerName;
     this.type = type;
-    this.pack_size_label = packSizeLabel;
+    this.packSizeLabel = packSizeLabel;
     this.composition1 = composition1;
     this.composition2 = composition2;
   }
@@ -55,9 +55,9 @@ class Medicine {
     return db.query(query, [
       this.id,
       this.name,
-      this.manufacturer_name,
+      this.manufacturerName ,
       this.type,
-      this.pack_size_label,
+      this.packSizeLabel,
       this.composition1,
       this.composition2,
     ]);
