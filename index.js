@@ -2,6 +2,7 @@
 const express = require("express");
 const userRoutes = require("./routes/user");
 const medicineRoutes = require("./routes/medicine");
+const manufacturerRoutes = require("./routes/manufacturer");
 const app = express();
 const bodyParser = require("body-parser");
 const PORT = `8080`;
@@ -20,6 +21,7 @@ app.use(bodyParser.json());
 
 app.use("/user/",userRoutes);
 app.use("/medicine/", medicineRoutes);
+app.use("/manufacturer/", manufacturerRoutes);
 
 // Consider adding proper error handling middleware
 app.use((err, req, res, next) => {
