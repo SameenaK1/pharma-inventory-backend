@@ -1,12 +1,12 @@
 const db = require("../database");
 
 class Medicine {
-  constructor(id, name, manufacturerName, type, packSizeLabel, composition1, composition2) {
+  constructor(id, name, manufacturer_name, type, pack_size_label, composition1, composition2) {
     this.id = id;
     this.name = name;
-    this.manufacturerName = manufacturerName;
+    this.manufacturer_name = manufacturer_name;
     this.type = type;
-    this.packSizeLabel = packSizeLabel;
+    this.pack_size_label = pack_size_label;
     this.composition1 = composition1;
     this.composition2 = composition2;
   }
@@ -64,9 +64,9 @@ class Medicine {
     return db.query(query, [
       this.id,
       this.name,
-      this.manufacturerName,
+      this.manufacturer_name,
       this.type,
-      this.packSizeLabel,
+      this.pack_size_label,
       this.composition1,
       this.composition2,
     ]);
