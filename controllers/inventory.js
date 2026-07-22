@@ -77,3 +77,53 @@ const isNewInsert = new Date(savedItem.insert_date).getTime() === new Date(saved
     return res.status(500).json({ error: "Internal server error occurred" });
   }
 };
+
+
+exports.getInventory = async (req, res, next) => {
+  try {
+    // Extract everything straight from the URL query params
+    const { sortBy, page, limit, ...searchParams } = req.query;
+
+    const parsedPage = parseInt(page, 10) || 1;
+    const parsedLimit = parseInt(limit, 10) || 50;
+    const safeLimit = Math.min(parsedLimit, 50); 
+    const safeSortBy = sortBy || 'name'; 
+
+    // Call the model passing the search object directly
+    const medicines = await Inventory.searchInventory(
+      searchParams, 
+      safeSortBy, 
+      parsedPage, 
+      safeLimit
+    );
+
+    const searchKeys = Object.keys(searchParams);
+    const searchSummary = searchKeys.length > 0 
+      ? searchKeys.map(key => `${key}: "${searchParams[key]}"`).join(', ')
+      : 'all inventory';
+
+    if (!medicines || medicines.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No medicines found matching parameters (${searchSummary})`,
+        data: [],
+        pagination: { page: parsedPage, limit: safeLimit, count: 0 }
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Loaded records matching (${searchSummary})`,
+      data: medicines,
+      pagination: { page: parsedPage, limit: safeLimit, count: medicines.length }
+    });
+
+  } catch (err) {
+    console.error(`Inventory fetch error:`, err);
+    return res.status(500).json({ 
+      success: false,
+      error: "Internal server error",
+      errorId: `ERR-${Date.now()}`
+    });
+  }
+};

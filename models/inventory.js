@@ -100,6 +100,67 @@ class Inventory {
       this.updateDate
     ]);
   }
+  static async searchInventory(searchParams = {}, userOrderBy = 'name', page = 1, limit = 50) {
+    try {
+      if (typeof Inventory.ensureTableExists === 'function') {
+        await Inventory.ensureTableExists();
+      }
+    } catch (tableErr) {
+      console.warn("Table existence check skipped/failed:", tableErr.message);
+    }
+
+    const allowedColumns = [
+      'name', 'manufacturer_name', 'type',
+      'composition1', 'composition2'
+    ];
+
+    const safeUserOrderBy = allowedColumns.includes(userOrderBy) ? userOrderBy : 'name';
+
+    const whereClauses = [];
+    const queryValues = [];
+    let paramIndex = 1;
+
+    for (const [column, value] of Object.entries(searchParams)) {
+      if (allowedColumns.includes(column) && value !== undefined && value !== null && value !== '') {
+        if (typeof value === 'string') {
+          whereClauses.push(`${column} ILIKE $${paramIndex}`);
+          queryValues.push(`%${value}%`);
+        } else {
+          whereClauses.push(`${column} = $${paramIndex}`);
+          queryValues.push(value);
+        }
+        paramIndex++;
+      }
+    }
+
+    let queryStr = `SELECT * FROM pharma.inventory`;
+
+    if (whereClauses.length > 0) {
+      queryStr += ` WHERE ${whereClauses.join(' AND ')}`;
+    }
+
+    if (userOrderBy && userOrderBy !== 'insert_date' && allowedColumns.includes(userOrderBy)) {
+
+      const textColumns = ['name', 'manufacturer_name', 'type', 'pack_size_label', 'composition1', 'composition2', 'user_name'];
+
+      if (textColumns.includes(safeUserOrderBy)) {
+
+        queryStr += ` ORDER BY LOWER(${safeUserOrderBy}) ASC`;
+      } else {
+
+        queryStr += ` ORDER BY ${safeUserOrderBy} ASC`;
+      }
+    } else {
+
+      queryStr += ` ORDER BY insert_date DESC`;
+    }
+
+    const offset = (page - 1) * limit;
+    queryStr += ` LIMIT ${limit} OFFSET ${offset};`;
+
+    const result = await db.query(queryStr, queryValues);
+    return result.rows;
+  }
 }
 module.exports = Inventory;
 
