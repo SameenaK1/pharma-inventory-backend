@@ -59,3 +59,8 @@ curl -X POST http://localhost:8080/inventory/add-medicine \
 ```bash
 curl "http://localhost:8080/medicine/medicine-name?name=Paracetamol"
 ``` 
+### Linting using biome
+sample command
+```
+npx @biomejs/biome format --write .\models\
+```

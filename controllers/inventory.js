@@ -94,7 +94,7 @@ exports.getInventory = async (req, res, next) => {
     const medicines = await Inventory.searchInventory(
       searchParams, 
       safeSortBy, 
-      parsedPage, 
+      parsedPage,
       safeLimit
     );
 
