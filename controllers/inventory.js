@@ -56,12 +56,21 @@ exports.addInventory = async (req, res, next) => {
     const new_inventory = new Inventory(name, manufacturerName, type, packSizeLabel, composition1, composition2, mrp, stockQuantity, purchasePrice, sellingPrice, stockAlertThreshold, expiryDate, userName, insertDate, updateDate);
     const response = await new_inventory.addInventory();
 
-    const insertId = response[0]?.insertId || response.insertId;
+   const savedItem = response.rows?.[0];
 
+    // Safety fallback check to ensure database returned data properly
+    if (!savedItem) {
+      return res.status(500).json({ error: "Failed to save or retrieve inventory record from the database response." });
+    }
+const isNewInsert = new Date(savedItem.insert_date).getTime() === new Date(savedItem.update_date).getTime();
+    const actionTaken = isNewInsert ? 'inserted' : 'updated';
     return res.status(201).json({
       success: true,
-      message: "Medicine added successfully",
-      insertedId: insertId,
+     action: actionTaken, 
+      message: actionTaken === 'inserted' 
+        ? "Medicine added successfully" 
+        : "Inventory stock merged and details updated successfully",
+      data: savedItem
     });
   } catch (err) {
     console.error(err);
