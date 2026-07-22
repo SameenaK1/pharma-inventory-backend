@@ -43,6 +43,7 @@ class Inventory {
           user_name VARCHAR(500),
         insert_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           update_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          CONSTRAINT unique_medicine_identity UNIQUE (name, manufacturer_name, type, pack_size_label)
         );
         `;
     await db.query(createTableQuery);
