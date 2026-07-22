@@ -1,6 +1,30 @@
-const db = require("../database");
-
+/**
+ * Represents an inventory item with medicine details and stock information.
+ * @class
+ */
+/**
+ * Represents an inventory item with medicine details and stock information.
+ * @class
+ */
 class Inventory {
+  /**
+   * Creates an instance of Inventory.
+   * @param {string} name - The name of the medicine
+   * @param {string} manufacturerName - The name of the manufacturer
+   * @param {string} type - The type/category of medicine
+   * @param {string} packSizeLabel - The label for the pack size
+   * @param {string} composition1 - First composition ingredient
+   * @param {string} composition2 - Second composition ingredient
+   * @param {number} mrp - Maximum Retail Price
+   * @param {number} stockQuantity - Current stock quantity
+   * @param {number} purchasePrice - Purchase price per unit
+   * @param {number} sellingPrice - Selling price per unit
+   * @param {number} stockAlertThreshold - Threshold for stock alerts
+   * @param {Date} expiryDate - Expiry date of the medicine
+   * @param {string} userName - Username associated with the record
+   * @param {Date} insertDate - Date when the record was inserted
+   * @param {Date} updateDate - Date when the record was last updated
+   */
   constructor(
     name,
     manufacturerName,
@@ -35,6 +59,13 @@ class Inventory {
     this.updateDate = updateDate;
   }
 
+  /**
+   * Ensures the inventory table exists in the database by creating the schema and table if needed.
+   * @static
+   * @async
+   * @returns {Promise<void>}
+   * @throws {Error} If table creation fails
+   */
   static async ensureTableExists() {
     // 1. Create the schema if it doesn't exist
     const createSchemaQuery = "CREATE SCHEMA IF NOT EXISTS pharma;";
@@ -64,6 +95,13 @@ class Inventory {
     await db.query(createTableQuery);
   }
 
+  /**
+   * Adds or updates an inventory record in the database.
+   * If a record with the same identity exists, it updates the stock quantity and other fields.
+   * @async
+   * @returns {Promise<Object>} Database query result with the saved/updated record
+   * @throws {Error} If table creation or database operation fails
+   */
   async addInventory() {
     // Ensure table exists first
     try {
@@ -114,6 +152,22 @@ class Inventory {
     ]);
   }
 
+  /**
+   * Searches inventory records with filtering, sorting, and pagination.
+   * @static
+   * @async
+   * @param {Object} searchParams - Search criteria object
+   * @param {string} [searchParams.name] - Medicine name to search for (case-insensitive)
+   * @param {string} [searchParams.manufacturer_name] - Manufacturer name to search for (case-insensitive)
+   * @param {string} [searchParams.type] - Medicine type to search for (case-insensitive)
+   * @param {string} [searchParams.composition1] - First composition to search for (case-insensitive)
+   * @param {string} [searchParams.composition2] - Second composition to search for (case-insensitive)
+   * @param {string} [userOrderBy=name] - Field to sort results by (default: 'name')
+   * @param {number} [page=1] - Page number for pagination (default: 1)
+   * @param {number} [limit=50] - Number of records per page (default: 50)
+   * @returns {Promise<Array>} Array of inventory records matching the search criteria
+   * @throws {Error} If database operations fail
+   */
   static async searchInventory(searchParams = {}, userOrderBy = "name", page = 1, limit = 50) {
     try {
       if (typeof Inventory.ensureTableExists === "function") {
