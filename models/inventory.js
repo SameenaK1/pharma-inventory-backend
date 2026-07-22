@@ -1,6 +1,6 @@
 const db = require("../database");
 
-class Inventory{
+class Inventory {
   constructor(name, manufacturerName, type, packSizeLabel, composition1, composition2, mrp, stockQuantity, purchasePrice, sellingPrice, stockAlertThreshold, expiryDate, userName, insertDate, updateDate) {
 
     this.name = name;
@@ -43,6 +43,7 @@ class Inventory{
           user_name VARCHAR(500),
         insert_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           update_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          CONSTRAINT unique_medicine_identity UNIQUE (name, manufacturer_name, pack_size_label, composition1, user_name)
         );
         `;
     await db.query(createTableQuery);
@@ -58,26 +59,26 @@ class Inventory{
     }
 
     const query = `
-      INSERT INTO pharma.inventory (
-        name,
-        manufacturer_name,
-        type,
-        pack_size_label,
-        composition1,
-        composition2,
-        mrp,
-        stock_quantity,
-        purchase_price,
-        selling_price,
-        stock_alert_threshold,
-        expiry_date,
-        user_name,
-        insert_date,
-        update_date
+    INSERT INTO pharma.inventory (
+    name, manufacturer_name, type, pack_size_label, composition1, composition2,
+    mrp, stock_quantity, purchase_price, selling_price, stock_alert_threshold,
+    expiry_date, user_name, insert_date, update_date
       )
       VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
       )
+      ON CONFLICT ON CONSTRAINT unique_medicine_identity 
+      DO UPDATE SET 
+          -- 1. Increment the stock quantity by adding the incoming stock
+          stock_quantity = pharma.inventory.stock_quantity + EXCLUDED.stock_quantity,
+          type                  = EXCLUDED.type,
+          composition2          = EXCLUDED.composition2,
+          mrp                   = EXCLUDED.mrp,
+          purchase_price        = EXCLUDED.purchase_price,
+          selling_price         = EXCLUDED.selling_price,
+          stock_alert_threshold = EXCLUDED.stock_alert_threshold,
+          expiry_date           = EXCLUDED.expiry_date,
+          update_date           = CURRENT_TIMESTAMP
       RETURNING *;
     `;
 
