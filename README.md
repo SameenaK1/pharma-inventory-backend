@@ -63,4 +63,6 @@ curl "http://localhost:8080/medicine/medicine-name?name=Paracetamol"
 sample command
 ```
 npx @biomejs/biome format --write .\models\
+OR
+npm run lint:fix
 ```
