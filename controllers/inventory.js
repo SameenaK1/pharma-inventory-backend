@@ -2,6 +2,7 @@
 const validate = require("validator");
 const Inventory = require("../models/inventory");
 const createToken = require("../token");
+const db = require("../database");
 
 
 exports.addInventory = async (req, res, next) => {
@@ -97,6 +98,36 @@ exports.getInventory = async (req, res, next) => {
       safeLimit
     );
 
+    // Get total count for pagination metadata
+    let totalCount = 0;
+    try {
+      let countQuery = `SELECT COUNT(*) as total FROM pharma.inventory`;
+      const countValues = [];
+      
+      if (Object.keys(searchParams).length > 0) {
+        const whereClauses = [];
+        let paramIndex = 1;
+        
+        for (const [column, value] of Object.entries(searchParams)) {
+          if (value !== undefined && value !== null && value !== '') {
+            whereClauses.push(`${column} ILIKE $${paramIndex}`);
+            countValues.push(`%${value}%`);
+            paramIndex++;
+          }
+        }
+        
+        if (whereClauses.length > 0) {
+          countQuery += ` WHERE ${whereClauses.join(' AND ')}`;
+        }
+      }
+      
+      const countResult = await db.query(countQuery, countValues);
+      totalCount = parseInt(countResult.rows[0].total);
+    } catch (countErr) {
+      console.warn('Could not get total count:', countErr.message);
+      totalCount = medicines.length; // Fallback to actual returned count
+    }
+
     const searchKeys = Object.keys(searchParams);
     const searchSummary = searchKeys.length > 0 
       ? searchKeys.map(key => `${key}: "${searchParams[key]}"`).join(', ')
@@ -107,15 +138,35 @@ exports.getInventory = async (req, res, next) => {
         success: false,
         message: `No medicines found matching parameters (${searchSummary})`,
         data: [],
-        pagination: { page: parsedPage, limit: safeLimit, count: 0 }
+        pagination: { 
+          page: parsedPage, 
+          limit: safeLimit, 
+          total: totalCount,
+          totalPages: Math.ceil(totalCount / safeLimit),
+          hasNext: parsedPage < Math.ceil(totalCount / safeLimit),
+          hasPrev: parsedPage > 1
+        }
       });
     }
+
+    const totalPages = Math.ceil(totalCount / safeLimit);
+    const hasNext = parsedPage < totalPages;
+    const hasPrev = parsedPage > 1;
 
     return res.status(200).json({
       success: true,
       message: `Loaded records matching (${searchSummary})`,
       data: medicines,
-      pagination: { page: parsedPage, limit: safeLimit, count: medicines.length }
+      pagination: { 
+        page: parsedPage, 
+        limit: safeLimit, 
+        total: totalCount,
+        totalPages: totalPages,
+        hasNext: hasNext,
+        hasPrev: hasPrev,
+        hasNextPage: hasNext ? parsedPage + 1 : null,
+        hasPrevPage: hasPrev ? parsedPage - 1 : null
+      }
     });
 
   } catch (err) {
