@@ -131,3 +131,40 @@ exports.getInventory = async (req, res, next) => {
     });
   }
 };
+
+
+exports.deleteInventory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { user, reason } = req.query;
+
+    if (!id || isNaN(id) || parseInt(id) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required parameter: id"
+      });
+    }
+
+    const deletedCount = await Inventory.deleteById(id, user, reason);
+
+    if (deletedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No inventory item found with ID: ${id}`
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Successfully backed up and deleted inventory item with ID: ${id}`
+    });
+
+  } catch (err) {
+    console.error(`Inventory deletion error:`, err);
+    return res.status(500).json({ 
+      success: false,
+      error: "Internal server error",
+      errorId: `ERR-${Date.now()}`
+    });
+  }
+};
