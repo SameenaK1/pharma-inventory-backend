@@ -138,7 +138,7 @@ exports.deleteInventory = async (req, res, next) => {
     const { id } = req.params;
     const { user, reason } = req.query;
 
-    if (!id) {
+    if (!id || isNaN(id) || parseInt(id) <= 0) {
       return res.status(400).json({
         success: false,
         message: "Missing required parameter: id"

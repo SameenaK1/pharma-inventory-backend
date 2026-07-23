@@ -94,6 +94,32 @@ class Inventory {
       );
     `;
     await db.query(createTableQuery);
+
+    // Create inventory_backup table if it doesn't exist
+    const createBackupTableQuery = `
+      CREATE TABLE IF NOT EXISTS pharma.inventory_backup (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(500) NOT NULL,
+        manufacturer_name VARCHAR(500) NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        pack_size_label VARCHAR(100),
+        composition1 TEXT,
+        composition2 TEXT,
+        mrp NUMERIC(10, 2),
+        stock_quantity INTEGER,
+        purchase_price NUMERIC(10, 2),
+        selling_price NUMERIC(10, 2),
+        stock_alert_threshold INTEGER DEFAULT 10,
+        expiry_date DATE,
+        user_name VARCHAR(500),
+        insert_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        update_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        deleted_by VARCHAR(500),
+        deleted_reason TEXT,
+        deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+    await db.query(createBackupTableQuery);
   }
 
   /**
@@ -327,7 +353,12 @@ class Inventory {
         deletedReason
       ];
 
-      await db.query(backupQueryStr, backupValues);
+      try {
+        await db.query(backupQueryStr, backupValues);
+      } catch (backupError) {
+        console.error('Failed to backup inventory item:', backupError);
+        throw new Error(`Failed to backup inventory item before deletion: ${backupError.message}`);
+      }
 
       // Everything worked smoothly. Commit the transaction permanent!
       await db.query("COMMIT");
