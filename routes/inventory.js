@@ -6,5 +6,5 @@ const router = express.Router();
 // POST endpoint for adding medicines
 router.post("/add-inventory", inventory.addInventory);
 router.get("/get-inventory", inventory.getInventory);
-router.delete("/delete-inventory", inventory.deleteInventory);
+router.delete("/delete-inventory/:id", inventory.deleteInventory);
 module.exports = router;

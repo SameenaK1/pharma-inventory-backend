@@ -135,12 +135,13 @@ exports.getInventory = async (req, res, next) => {
 
 exports.deleteInventory = async (req, res, next) => {
   try {
-    const { id, user, reason } = req.query;
+    const { id } = req.params;
+    const { user, reason } = req.query;
 
     if (!id) {
       return res.status(400).json({
         success: false,
-        message: "Missing required query parameter: id"
+        message: "Missing required parameter: id"
       });
     }
 
