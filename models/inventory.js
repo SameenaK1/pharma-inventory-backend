@@ -199,16 +199,16 @@ class Inventory {
       }
     }
 
-        // Get total count for pagination metadata
+    // Get total count for pagination metadata
     let totalCount = 0;
     try {
       let countQuery = "SELECT COUNT(*) as total FROM pharma.inventory";
       const countValues = [];
-      
+
       if (Object.keys(searchParams).length > 0) {
         const whereCountClauses = [];
         let countParamIndex = 1;
-        
+
         for (const [column, value] of Object.entries(searchParams)) {
           if (value !== undefined && value !== null && value !== '') {
             whereCountClauses.push(`${column} ILIKE $${countParamIndex}`);
@@ -216,12 +216,12 @@ class Inventory {
             countParamIndex++;
           }
         }
-        
+
         if (whereCountClauses.length > 0) {
           countQuery += ` WHERE ${whereCountClauses.join(' AND ')}`;
         }
       }
-      
+
       const countResult = await db.query(countQuery, countValues);
       totalCount = parseInt(countResult.rows[0].total);
     } catch (countErr) {
@@ -236,7 +236,7 @@ class Inventory {
       queryStr += ` WHERE ${whereClauses.join(" AND ")}`;
     }
 
-   if (userOrderBy !== "insert_date" && allowedColumns.includes(userOrderBy)) {
+    if (userOrderBy !== "insert_date" && allowedColumns.includes(userOrderBy)) {
       const textColumns = ["name", "manufacturer_name", "type", "pack_size_label", "composition1", "composition2", "user_name"];
 
       if (textColumns.includes(safeUserOrderBy)) {
@@ -272,6 +272,14 @@ class Inventory {
         hasPrevPage: hasPrev ? page - 1 : null
       }
     };
+  }
+  static async deleteById(id) {
+    // Use parameterized queries ($1) to completely prevent SQL injection
+    const queryStr = "DELETE FROM pharma.inventory WHERE id = $1;";
+    const result = await db.query(queryStr, [id]);
+
+    // result.rowCount tells us how many rows were actually deleted
+    return result.rowCount;
   }
 }
 
