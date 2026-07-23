@@ -236,7 +236,7 @@ class Inventory {
       queryStr += ` WHERE ${whereClauses.join(" AND ")}`;
     }
 
-    if (userOrderBy && userOrderBy !== "insert_date" && allowedColumns.includes(userOrderBy)) {
+   if (userOrderBy !== "insert_date" && allowedColumns.includes(userOrderBy)) {
       const textColumns = ["name", "manufacturer_name", "type", "pack_size_label", "composition1", "composition2", "user_name"];
 
       if (textColumns.includes(safeUserOrderBy)) {

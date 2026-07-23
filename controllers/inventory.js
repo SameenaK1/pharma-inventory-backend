@@ -49,7 +49,7 @@ exports.addInventory = async (req, res, next) => {
   if(!manufacturerName || manufacturerName.trim() === '') {
     return res.status(400).json({ error: "Manufacturer name is required" });
   }
-  if(!stockQuantity || stockQuantity <= 0) {
+  if(stockQuantity !== null || stockQuantity <= 0) {
     return res.status(400).json({ error: "Stock quantity must be greater than zero" });
   }
 
@@ -63,7 +63,7 @@ exports.addInventory = async (req, res, next) => {
     if (!savedItem) {
       return res.status(500).json({ error: "Failed to save or retrieve inventory record from the database response." });
     }
-const isNewInsert = new Date(savedItem.insert_date).getTime() === new Date(savedItem.update_date).getTime();
+const isNewInsert = !savedItem.update_date || new Date(savedItem.insert_date).getTime() >= new Date(savedItem.update_date).getTime();
     const actionTaken = isNewInsert ? 'inserted' : 'updated';
     return res.status(201).json({
       success: true,
