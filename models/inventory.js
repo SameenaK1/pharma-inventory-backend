@@ -273,13 +273,71 @@ class Inventory {
       }
     };
   }
-  static async deleteById(id) {
-    // Use parameterized queries ($1) to completely prevent SQL injection
-    const queryStr = "DELETE FROM pharma.inventory WHERE id = $1;";
-    const result = await db.query(queryStr, [id]);
+  static async deleteById(id, deletedBy = 'system', deletedReason = 'User Request') {
+    // Start a transaction so if anything fails, the database rolls back safely
+    await db.query("BEGIN");
 
-    // result.rowCount tells us how many rows were actually deleted
-    return result.rowCount;
+    try {
+      // 1. Delete the item and IMMEDIATELY return its data using RETURNING *
+      const deleteQueryStr = `
+      DELETE FROM pharma.inventory 
+      WHERE id = $1 
+      RETURNING *;
+    `;
+      const deleteResult = await db.query(deleteQueryStr, [id]);
+
+      // If no row was found/deleted, roll back and return 0
+      if (deleteResult.rowCount === 0) {
+        await db.query("ROLLBACK");
+        return 0;
+      }
+
+      // The deleted item's data is sitting right here:
+      const oldData = deleteResult.rows[0];
+
+      // 2. Insert that data into the backup table along with deletion metadata
+      const backupQueryStr = `
+  INSERT INTO pharma.inventory_backup (
+    id, name, manufacturer_name, type, pack_size_label, composition1, composition2,
+    mrp, stock_quantity, purchase_price, selling_price, stock_alert_threshold,
+    expiry_date, user_name, insert_date, update_date, deleted_by, deleted_reason
+  ) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+  );
+`;
+
+      const backupValues = [
+        oldData.id, // Explicitly inserting the original ID value here!
+        oldData.name,
+        oldData.manufacturer_name,
+        oldData.type,
+        oldData.pack_size_label,
+        oldData.composition1,
+        oldData.composition2,
+        oldData.mrp,
+        oldData.stock_quantity,
+        oldData.purchase_price,
+        oldData.selling_price,
+        oldData.stock_alert_threshold,
+        oldData.expiry_date,
+        oldData.user_name,
+        oldData.insert_date,
+        oldData.update_date,
+        deletedBy,
+        deletedReason
+      ];
+
+      await db.query(backupQueryStr, backupValues);
+
+      // Everything worked smoothly. Commit the transaction permanent!
+      await db.query("COMMIT");
+      return 1;
+
+    } catch (error) {
+      // If anything blew up during backup, cancel the deletion completely
+      await db.query("ROLLBACK");
+      throw error;
+    }
   }
 }
 
