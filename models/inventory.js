@@ -1,3 +1,4 @@
+const db = require("../database");
 /**
  * Represents an inventory item with medicine details and stock information.
  * @class
@@ -198,6 +199,37 @@ class Inventory {
       }
     }
 
+        // Get total count for pagination metadata
+    let totalCount = 0;
+    try {
+      let countQuery = "SELECT COUNT(*) as total FROM pharma.inventory";
+      const countValues = [];
+      
+      if (Object.keys(searchParams).length > 0) {
+        const whereCountClauses = [];
+        let countParamIndex = 1;
+        
+        for (const [column, value] of Object.entries(searchParams)) {
+          if (value !== undefined && value !== null && value !== '') {
+            whereCountClauses.push(`${column} ILIKE $${countParamIndex}`);
+            countValues.push(`%${value}%`);
+            countParamIndex++;
+          }
+        }
+        
+        if (whereCountClauses.length > 0) {
+          countQuery += ` WHERE ${whereCountClauses.join(' AND ')}`;
+        }
+      }
+      
+      const countResult = await db.query(countQuery, countValues);
+      totalCount = parseInt(countResult.rows[0].total);
+    } catch (countErr) {
+      console.warn('Could not get total count:', countErr.message);
+      totalCount = 0; // Fallback to 0, will be handled in controller
+    }
+
+    // Build the main query for records
     let queryStr = "SELECT * FROM pharma.inventory";
 
     if (whereClauses.length > 0) {
@@ -220,7 +252,26 @@ class Inventory {
     queryStr += ` LIMIT ${limit} OFFSET ${offset};`;
 
     const result = await db.query(queryStr, queryValues);
-    return result.rows;
+    const records = result.rows;
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    return {
+      data: records,
+      pagination: {
+        page: page,
+        limit: limit,
+        total: totalCount,
+        totalPages: totalPages,
+        hasNext: hasNext,
+        hasPrev: hasPrev,
+        hasNextPage: hasNext ? page + 1 : null,
+        hasPrevPage: hasPrev ? page - 1 : null
+      }
+    };
   }
 }
 
