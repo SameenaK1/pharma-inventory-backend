@@ -49,7 +49,7 @@ exports.addInventory = async (req, res, next) => {
   if(!manufacturerName || manufacturerName.trim() === '') {
     return res.status(400).json({ error: "Manufacturer name is required" });
   }
-  if(stockQuantity !== null || stockQuantity <= 0) {
+  if(stockQuantity === null || stockQuantity <= 0) {
     return res.status(400).json({ error: "Stock quantity must be greater than zero" });
   }
 
