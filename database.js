@@ -4,10 +4,13 @@ require('dotenv').config();
 
 const connectionString = `postgresql://postgres:${process.env.DB_PASSWORD}@db.mbitcxuojpbpvqrrrqnq.supabase.co:5432/postgres`;
 
+// Strict TLS by default. Set DB_SSL_REJECT_UNAUTHORIZED=false only for local/dev.
+const rejectUnauthorized = process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false';
+
 const pool = new Pool({
   connectionString: connectionString,
   ssl: {
-    rejectUnauthorized: false 
+    rejectUnauthorized
   }
 });
 pool.on('error', (err) => {
