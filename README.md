@@ -14,7 +14,7 @@ Backend for Pharma Inventory app with comprehensive API endpoints for medicine m
 - Medicine management (add medicines to inventory)
 - Inventory tracking with stock management
 - Medicine name search functionality
-- PostgreSQL database integration
+- PostgreSQL database integration via Supabase (free tier)
 - CORS enabled for cross-origin requests
 
 ## Quick Start
@@ -26,12 +26,12 @@ Backend for Pharma Inventory app with comprehensive API endpoints for medicine m
    ```
 3. Configure environment variables (create .env file):
    ```env
-   DB_USER=postgres
-   DB_HOST=localhost
-   DB_DATABASE=pharma
-   DB_PASSWORD=password
-   DB_PORT=5432
+   DB_PASSWORD=your_supabase_db_password
+   DB_SSL_REJECT_UNAUTHORIZED=true
    ```
+
+   This project uses **PostgreSQL** as its database and is currently leveraging the **free tier of Supabase** to host the database online. The app connects to Supabase using TLS. Certificate verification is enabled by default, so keep `DB_SSL_REJECT_UNAUTHORIZED=true` in production. Set it to `false` only for local development if absolutely necessary.
+
 4. Start the server:
    ```bash
    npm start
