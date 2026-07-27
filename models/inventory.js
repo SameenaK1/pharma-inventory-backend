@@ -212,24 +212,25 @@ static async searchInventory(searchParams = {}, userOrderBy = "name", page = 1, 
     const queryValues = [];
     let paramIndex = 1;
 
-    // 1. Extract the search term dynamically from searchParams
-    // This handles { search: "text" }, { name: "text" }, or dynamic frontend keys like [searchField]: "text"
-    let searchTerm = "";
-    if (searchParams.search) {
-      searchTerm = String(searchParams.search).trim();
+    // 1. Extract search term(s) from searchParams
+    // Prefer explicit `search`, otherwise treat each allowed string filter value as a search term.
+    const searchTerms = [];
+    const explicitSearch = typeof searchParams.search === "string" ? searchParams.search.trim() : "";
+    if (explicitSearch) {
+      searchTerms.push(explicitSearch);
     } else {
-      // Fallback: look for the first non-empty string value in the incoming filters
-      const firstStringValue = Object.values(searchParams).find(val => typeof val === "string" && val.trim() !== "");
-      if (firstStringValue) {
-        searchTerm = firstStringValue.trim();
+      for (const [key, val] of Object.entries(searchParams)) {
+        if (!allowedColumns.includes(key) || typeof val !== "string") continue;
+        const trimmed = val.trim();
+        if (trimmed) searchTerms.push(trimmed);
       }
     }
 
-    // 2. If a search term is found, search it against ANY of the allowed text columns
-    if (searchTerm) {
+    // 2. If search term(s) are found, search them against ANY of the allowed text columns
+    for (const term of searchTerms) {
       const orClauses = allowedColumns.map(column => `${column} ILIKE $${paramIndex}`);
       whereClauses.push(`(${orClauses.join(" OR ")})`);
-      queryValues.push(`%${searchTerm}%`);
+      queryValues.push(`%${term}%`);
       paramIndex++;
     }
 
