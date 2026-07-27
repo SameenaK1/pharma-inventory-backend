@@ -195,7 +195,7 @@ class Inventory {
    * @returns {Promise<Array>} Array of inventory records matching the search criteria
    * @throws {Error} If database operations fail
    */
-  static async searchInventory(searchParams = {}, userOrderBy = "name", page = 1, limit = 50) {
+static async searchInventory(searchParams = {}, userOrderBy = "name", page = 1, limit = 50) {
     try {
       if (typeof Inventory.ensureTableExists === "function") {
         await Inventory.ensureTableExists();
@@ -205,66 +205,71 @@ class Inventory {
     }
 
     const allowedColumns = ["name", "manufacturer_name", "type", "composition1", "composition2"];
-
+    
     const safeUserOrderBy = allowedColumns.includes(userOrderBy) ? userOrderBy : "name";
 
     const whereClauses = [];
     const queryValues = [];
     let paramIndex = 1;
 
+    // 1. Extract search term(s) from searchParams
+    // Prefer explicit `search`, otherwise treat each allowed string filter value as a search term.
+    const searchTerms = [];
+    const explicitSearch = typeof searchParams.search === "string" ? searchParams.search.trim() : "";
+    if (explicitSearch) {
+      searchTerms.push(explicitSearch);
+    } else {
+      for (const [key, val] of Object.entries(searchParams)) {
+        if (!allowedColumns.includes(key) || typeof val !== "string") continue;
+        const trimmed = val.trim();
+        if (trimmed) searchTerms.push(trimmed);
+      }
+    }
+
+    // 2. If search term(s) are found, search them against ANY of the allowed text columns
+    for (const term of searchTerms) {
+      const orClauses = allowedColumns.map(column => `${column} ILIKE $${paramIndex}`);
+      whereClauses.push(`(${orClauses.join(" OR ")})`);
+      queryValues.push(`%${term}%`);
+      paramIndex++;
+    }
+
+    // 3. Handle any non-string specific filters (like IDs, booleans, status numbers) if present
     for (const [column, value] of Object.entries(searchParams)) {
+      if (column === "search" || typeof value === "string") continue; // Skip text search terms already handled
+
       if (allowedColumns.includes(column) && value !== undefined && value !== null && value !== "") {
-        if (typeof value === "string") {
-          whereClauses.push(`${column} ILIKE $${paramIndex}`);
-          queryValues.push(`%${value}%`);
-        } else {
-          whereClauses.push(`${column} = $${paramIndex}`);
-          queryValues.push(value);
-        }
+        whereClauses.push(`${column} = $${paramIndex}`);
+        queryValues.push(value);
         paramIndex++;
       }
     }
 
-    // Get total count for pagination metadata
+    // 4. Get Total Count for Pagination (Reusing the identical whereClauses)
     let totalCount = 0;
     try {
       let countQuery = "SELECT COUNT(*) as total FROM pharma.inventory";
-      const countValues = [];
-
-      if (Object.keys(searchParams).length > 0) {
-        const whereCountClauses = [];
-        let countParamIndex = 1;
-
-        for (const [column, value] of Object.entries(searchParams)) {
-          if (value !== undefined && value !== null && value !== '') {
-            whereCountClauses.push(`${column} ILIKE $${countParamIndex}`);
-            countValues.push(`%${value}%`);
-            countParamIndex++;
-          }
-        }
-
-        if (whereCountClauses.length > 0) {
-          countQuery += ` WHERE ${whereCountClauses.join(' AND ')}`;
-        }
+      if (whereClauses.length > 0) {
+        countQuery += ` WHERE ${whereClauses.join(' AND ')}`;
       }
 
-      const countResult = await db.query(countQuery, countValues);
-      totalCount = parseInt(countResult.rows[0].total);
+      const countResult = await db.query(countQuery, queryValues);
+      totalCount = parseInt(countResult.rows[0].total) || 0;
     } catch (countErr) {
       console.warn('Could not get total count:', countErr.message);
-      totalCount = 0; // Fallback to 0, will be handled in controller
+      totalCount = 0;
     }
 
-    // Build the main query for records
+    // 5. Build the Main Query for Records
     let queryStr = "SELECT * FROM pharma.inventory";
 
     if (whereClauses.length > 0) {
       queryStr += ` WHERE ${whereClauses.join(" AND ")}`;
     }
 
+    // Sorting
     if (userOrderBy !== "insert_date" && allowedColumns.includes(userOrderBy)) {
       const textColumns = ["name", "manufacturer_name", "type", "pack_size_label", "composition1", "composition2", "user_name"];
-
       if (textColumns.includes(safeUserOrderBy)) {
         queryStr += ` ORDER BY LOWER(${safeUserOrderBy}) ASC`;
       } else {
@@ -274,6 +279,7 @@ class Inventory {
       queryStr += " ORDER BY insert_date DESC";
     }
 
+    // Pagination bounds
     const offset = (page - 1) * limit;
     queryStr += ` LIMIT ${limit} OFFSET ${offset};`;
 
@@ -299,6 +305,7 @@ class Inventory {
       }
     };
   }
+
   static async deleteById(id, deletedBy = 'system', deletedReason = 'User Request') {
     // Start a transaction so if anything fails, the database rolls back safely
     await db.query("BEGIN");
