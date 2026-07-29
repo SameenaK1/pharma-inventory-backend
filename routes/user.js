@@ -1,10 +1,12 @@
-// routes/user.js
 const express = require("express");
-const user = require("../controllers/user");
-
 const router = express.Router();
+const userController = require("../controllers/user");
+const reqAuth = require("../middleware/reqAuth");
 
-router.post("/sign-up", user.signUp);
-router.post("/log-In", user.logIn);
+router.post("/register", userController.signUp);
 
-module.exports = router;    
+// Route for User Login
+router.post("/login", userController.logIn);
+router.get("/profile", reqAuth, userController.getUserProfile);
+
+module.exports = router;

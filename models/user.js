@@ -1,78 +1,86 @@
-// Require Util Database
-const db = require("../database");
+const db = require("../database"); // Imports your database connection wrapper
 
-module.exports = class User {
-  constructor(name, username, email, password) {
-    this.name = name;
+class User {
+  // 🌟 1. Added `role` as the first parameter to match your controller
+  constructor(role, fullname, username, email, passwordHash) {
+    // Gracefully split fullname into first_name and last_name for your schema
+    const nameParts = fullname ? fullname.trim().split(/\s+/) : [""];
+    this.first_name = nameParts[0] || "";
+    this.last_name = nameParts.slice(1).join(" ") || "";
+
     this.username = username;
     this.email = email;
-    this.password = password;
+    this.password_hash = passwordHash;
+
+    // 🌟 2. Assign the role from the frontend, with 'patient' as a safe fallback
+    this.role = role || "pharmacist"; // Default role is 'pharmacist' if not provided
   }
 
-  // Helper method to ensure the schema and table exist before any operation
-  static async ensureTableExists() {
-    // 1. Create the schema if it doesn't exist
-    const createSchemaQuery = `CREATE SCHEMA IF NOT EXISTS pharma;`;
-    await db.query(createSchemaQuery);
-
-    // 2. Create the table if it doesn't exist
-    const createTableQuery = `
-      CREATE TABLE IF NOT EXISTS pharma.user (
-        id SERIAL PRIMARY KEY,
-        fullname VARCHAR(100) NOT NULL,
-        username VARCHAR(50) UNIQUE NOT NULL,
-        email VARCHAR(100) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        lastLogin TIMESTAMP WITH TIME ZONE,
-        loggedIn BOOLEAN DEFAULT FALSE,
-        loginCount INT DEFAULT 0
-      );
-    `;
-    await db.query(createTableQuery);
-  }
-
+  // Used by your signUp controller
   async create_user() {
-    // Ensure table exists first
-    await User.ensureTableExists();
-
-    // PostgreSQL uses $1, $2, $3 placeholders instead of ?
     const query = `
-      INSERT INTO pharma.user (fullname, username, email, password) 
-      VALUES ($1, $2, $3, $4) RETURNING *;
+      INSERT INTO pharma.users (role, email, password_hash, username, first_name, last_name)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING user_id AS id, username, email, role;
     `;
-    // Using db.query (assuming your utils/database uses the standard 'pg' pool.query mapping)
-    return db.query(query, [this.name, this.username, this.email, this.password]);
+    const values = [this.role, this.email, this.password_hash, this.username, this.first_name, this.last_name];
+
+    try {
+      const result = await db.query(query, values);
+      return result.rows[0];
+    } catch (err) {
+      throw err; // Throws the error up to your controller's catch block (e.g., code 23505)
+    }
   }
 
-  static async logged_in(email) {
-    await User.ensureTableExists();
-
+  // Used to fetch the logged-in user's profile
+  static async findById(id) {
     const query = `
-      UPDATE pharma.user 
-      SET lastLogin = CURRENT_TIMESTAMP, loggedIn = true, loginCount = loginCount + 1 
+      SELECT user_id AS id, username, email, role, first_name, last_name, phone_number, license_number, status 
+      FROM pharma.users 
+      WHERE user_id = $1;
+    `;
+    try {
+      const result = await db.query(query, [id]);
+      return result.rows[0] || null;
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  // Used by your logIn controller
+  static async findOne(email) {
+    // Aliasing user_id -> id and password_hash -> password keeps it compatible with your controller
+    const query = `
+      SELECT user_id AS id, username, email, password_hash AS password, role 
+      FROM pharma.users 
       WHERE email = $1;
     `;
-    return db.query(query, [email]);
+
+    try {
+      const result = await db.query(query, [email]);
+      return result.rows[0] || null;
+    } catch (err) {
+      throw err;
+    }
   }
 
-  static async findOne(email) {
-    await User.ensureTableExists();
+  // Used by your logIn controller tracking metrics
+  static async logged_in(email) {
+    const query = `
+      UPDATE pharma.users 
+      SET updated_at = CURRENT_TIMESTAMP 
+      WHERE email = $1;
+    `;
 
-    const query = `SELECT id, password, username FROM pharma.user WHERE email = $1;`;
-    return db.query(query, [email]);
+    try {
+      await db.query(query, [email]);
+      return true;
+    } catch (err) {
+      console.error("Failed to update user login metric:", err);
+      return false; // Soft fail so database metrics don't disrupt user login access
+    }
   }
+}
 
-  static async findOneByID(id) {
-    await User.ensureTableExists();
-
-    const query = `SELECT id, password, username FROM pharma.user WHERE id = $1;`;
-    return db.query(query, [id]);
-  }
-
-  static async log_out(id) {
-    await User.ensureTableExists();
-
-    const query = `UPDATE pharma.user SET loggedIn = false WHERE id = $1;`;
-    return db.query(query, [id]);
-  }
-};
+module.exports = User;
