@@ -18,6 +18,8 @@ exports.addInventory = async (req, res, next) => {
   const composition1 = payload.composition1;
   const composition2 = payload.composition2;
   const mrp = payload.mrp ? parseFloat(payload.mrp) : null;
+  const batchNumber = payload.batchnumber;
+  const shelfRackInfo = payload.shelfrackinfo;
   const stockQuantity = payload.stockquantity ? parseInt(payload.stockquantity) : null;
   const purchasePrice = payload.purchaseprice ? parseFloat(payload.purchaseprice) : null;
   const sellingPrice = payload.sellingprice ? parseFloat(payload.sellingprice) : null;
@@ -52,9 +54,12 @@ exports.addInventory = async (req, res, next) => {
   if(stockQuantity === null || stockQuantity <= 0) {
     return res.status(400).json({ error: "Stock quantity must be greater than zero" });
   }
+  if(!batchNumber || batchNumber.trim() === '') {
+    return res.status(400).json({ error: "Batch number is required" });
+  }
 
   try {
-    const new_inventory = new Inventory(name, manufacturerName, type, packSizeLabel, composition1, composition2, mrp, stockQuantity, purchasePrice, sellingPrice, stockAlertThreshold, expiryDate, userName, insertDate, updateDate);
+    const new_inventory = new Inventory(name, manufacturerName, type, packSizeLabel, composition1, composition2, mrp, batchNumber, shelfRackInfo, stockQuantity, purchasePrice, sellingPrice, stockAlertThreshold, expiryDate, userName, insertDate, updateDate);
     const response = await new_inventory.addInventory();
 
    const savedItem = response.rows?.[0];
