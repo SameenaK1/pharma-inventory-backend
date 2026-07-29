@@ -6,10 +6,10 @@ const createToken = require("../token"); // Assumes this utility signs your JWT
 // 1. SIGN UP CONTROLLER
 exports.signUp = async (req, res, next) => {
   // 🌟 Extracted role from incoming request body
-  const { role, username, fullname, email, password } = req.body;
+  const { role = "pharmacist", username, fullname, email, password } = req.body;
 
   // Initial field validation including role
-  if (!(role && username && fullname && email && password)) {
+  if (!(username && fullname && email && password)) {
     console.error("Validation Error: All fields are mandatory");
     return res.status(400).json({ error: "All fields are mandatory" });
   }

@@ -11,7 +11,10 @@ const reqAuth = require("./middleware/reqAuth");
 const cors = require("cors");
 
 const conn = require("./database");
-
+ const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
+   .split(",")
+   .map((s) => s.trim())
+   .filter(Boolean);
 // app.use((req, res, next) => {
 //   res.setHeader("Access-Control-Allow-Origin", "*");
 //   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE");
@@ -19,10 +22,10 @@ const conn = require("./database");
 //   next();
 // });
 app.use(cors({
-  origin: "http://localhost:5173", // Explicitly trust your Vite React frontend
+   origin: allowedOrigins,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
+  credentials: true,
 }));
 
 // Used to get data in post data, all data is encoded in text using this parser module

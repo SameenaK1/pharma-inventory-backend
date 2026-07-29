@@ -9,12 +9,17 @@ const reqAuth = async (req, res, next) => {
   }
 
   // Extract token from "Bearer <token>"
-  const token = authorization.split(" ")[1];
-
+  if (!authorization.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Authorization token must be a Bearer token" });
+  }
+ const token = authorization.slice("Bearer ".length).trim();
+   if (!token) {
+     return res.status(401).json({ error: "Authorization token required!" });
+   }
   try {
     // Decode token to extract user ID payload
     const { id } = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     // 🌟 FIXED FOR POSTGRESQL: Use the correct method name from your class
     const user = await User.findOneByID(id);
 
@@ -23,7 +28,7 @@ const reqAuth = async (req, res, next) => {
     }
 
     // Attach user information to request scope for handlers downstream
-    req.user = user; 
+    req.user = user;
     next();
   } catch (error) {
     console.error("JWT Auth Middleware Error:", error);

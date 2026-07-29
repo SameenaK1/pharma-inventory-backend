@@ -13,7 +13,7 @@ class User {
     this.password_hash = passwordHash;
 
     // 🌟 2. Assign the role from the frontend, with 'patient' as a safe fallback
-    this.role = role || "patient";
+    this.role = role || "pharmacist"; // Default role is 'pharmacist' if not provided
   }
 
   // Used by your signUp controller
