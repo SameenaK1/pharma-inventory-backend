@@ -22,7 +22,6 @@ exports.addInventory = async (req, res, next) => {
   const batchNumber = typeof batchNumberRaw === "string" ? batchNumberRaw : (batchNumberRaw == null ? "" : String(batchNumberRaw));
   const shelfRackInfoRaw = payload.shelfrackinfo;
   const shelfRackInfo = typeof shelfRackInfoRaw === "string" ? shelfRackInfoRaw : (shelfRackInfoRaw == null ? null : String(shelfRackInfoRaw));
-  const shelfRackInfo = payload.shelfrackinfo;
   const stockQuantity = payload.stockquantity ? parseInt(payload.stockquantity) : null;
   const purchasePrice = payload.purchaseprice ? parseFloat(payload.purchaseprice) : null;
   const sellingPrice = payload.sellingprice ? parseFloat(payload.sellingprice) : null;

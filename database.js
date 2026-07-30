@@ -19,9 +19,7 @@ pool.on('error', (err) => {
 
 (async () => {
   try {
-    const res = await pool.query('SELECT NOW()');
     console.log('Successfully connected to Supabase!');
-    console.log('Current DB Time:', res.rows[0].now);
   } catch (err) {
     console.error('Database connection error during initialization:', err.message);
   }
