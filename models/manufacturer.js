@@ -33,7 +33,6 @@ class Manufacturer {
     `;
 
     const searchPattern = `%${searchTerm}%`;
-    console.log(query, searchPattern);
     const result = await db.query(query, [searchPattern]);
     return result.rows;
   }

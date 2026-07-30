@@ -4,7 +4,6 @@ const createToken = require("../token");
 
 exports.searchManufacturerNames = async (req, res, next) => {
   const searchTerm = req.query.name;
-  console.log("searchTerm", searchTerm);
 
   // Validate search term length
   if (!searchTerm || searchTerm.trim().length < 3) {

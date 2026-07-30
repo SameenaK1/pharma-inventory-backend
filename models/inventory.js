@@ -34,6 +34,8 @@ class Inventory {
     composition1,
     composition2,
     mrp,
+    batchNumber,
+    shelfRackInfo,
     stockQuantity,
     purchasePrice,
     sellingPrice,
@@ -50,6 +52,8 @@ class Inventory {
     this.composition1 = composition1;
     this.composition2 = composition2;
     this.mrp = mrp;
+    this.batchNumber = batchNumber;
+    this.shelfRackInfo = shelfRackInfo;
     this.stockQuantity = stockQuantity;
     this.purchasePrice = purchasePrice;
     this.sellingPrice = sellingPrice;
@@ -73,25 +77,27 @@ class Inventory {
     await db.query(createSchemaQuery);
 
     const createTableQuery = `
-      CREATE TABLE IF NOT EXISTS pharma.inventory (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(500) NOT NULL,
-        manufacturer_name VARCHAR(500) NOT NULL,
-        type VARCHAR(50) NOT NULL,
-        pack_size_label VARCHAR(100),
-        composition1 TEXT,
-        composition2 TEXT,
-        mrp NUMERIC(10, 2),
-        stock_quantity INTEGER,
-        purchase_price NUMERIC(10, 2),
-        selling_price NUMERIC(10, 2),
-        stock_alert_threshold INTEGER DEFAULT 10,
-        expiry_date DATE,
-        user_name VARCHAR(500),
-        insert_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        update_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT unique_medicine_identity UNIQUE (name, manufacturer_name, pack_size_label, composition1, user_name)
-      );
+     CREATE TABLE IF NOT EXISTS pharma.inventory (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(500) NOT NULL,
+    manufacturer_name VARCHAR(500) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    pack_size_label VARCHAR(100),
+    composition1 TEXT,
+    composition2 TEXT,
+    mrp NUMERIC(10, 2),
+    batch_number VARCHAR(100) NOT NULL,
+    shelf_rack_info VARCHAR(100),         -- New column added here
+    stock_quantity INTEGER,
+    purchase_price NUMERIC(10, 2),
+    selling_price NUMERIC(10, 2),
+    stock_alert_threshold INTEGER DEFAULT 10,
+    expiry_date DATE,
+    user_name VARCHAR(500),
+    insert_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_medicine_identity UNIQUE (name, manufacturer_name, pack_size_label, composition1, user_name, batch_number)
+);
     `;
     await db.query(createTableQuery);
 
@@ -106,6 +112,8 @@ class Inventory {
         composition1 TEXT,
         composition2 TEXT,
         mrp NUMERIC(10, 2),
+        batch_number VARCHAR(100) NOT NULL,
+        shelf_rack_info VARCHAR(100),         -- New column added here
         stock_quantity INTEGER,
         purchase_price NUMERIC(10, 2),
         selling_price NUMERIC(10, 2),
@@ -140,10 +148,10 @@ class Inventory {
     const query = `
       INSERT INTO pharma.inventory (
         name, manufacturer_name, type, pack_size_label, composition1, composition2,
-        mrp, stock_quantity, purchase_price, selling_price, stock_alert_threshold,
+        mrp, batch_number, shelf_rack_info, stock_quantity, purchase_price, selling_price, stock_alert_threshold,
         expiry_date, user_name, insert_date, update_date
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
       )
       ON CONFLICT ON CONSTRAINT unique_medicine_identity 
       DO UPDATE SET 
@@ -152,6 +160,7 @@ class Inventory {
         type = EXCLUDED.type,
         composition2 = EXCLUDED.composition2,
         mrp = EXCLUDED.mrp,
+        shelf_rack_info = EXCLUDED.shelf_rack_info,
         purchase_price = EXCLUDED.purchase_price,
         selling_price = EXCLUDED.selling_price,
         stock_alert_threshold = EXCLUDED.stock_alert_threshold,
@@ -168,6 +177,8 @@ class Inventory {
       this.composition1,
       this.composition2,
       this.mrp,
+      this.batchNumber,
+      this.shelfRackInfo,
       this.stockQuantity,
       this.purchasePrice,
       this.sellingPrice,
@@ -204,7 +215,7 @@ static async searchInventory(searchParams = {}, userOrderBy = "name", page = 1, 
       console.warn("Table existence check skipped/failed:", tableErr.message);
     }
 
-    const allowedColumns = ["name", "manufacturer_name", "type", "composition1", "composition2"];
+    const allowedColumns = ["name", "manufacturer_name", "type", "composition1", "composition2", "batch_number"];
     
     const safeUserOrderBy = allowedColumns.includes(userOrderBy) ? userOrderBy : "name";
 
@@ -269,7 +280,7 @@ static async searchInventory(searchParams = {}, userOrderBy = "name", page = 1, 
 
     // Sorting
     if (userOrderBy !== "insert_date" && allowedColumns.includes(userOrderBy)) {
-      const textColumns = ["name", "manufacturer_name", "type", "pack_size_label", "composition1", "composition2", "user_name"];
+      const textColumns = ["name", "manufacturer_name", "type", "pack_size_label", "composition1", "composition2", "batch_number", "user_name"];
       if (textColumns.includes(safeUserOrderBy)) {
         queryStr += ` ORDER BY LOWER(${safeUserOrderBy}) ASC`;
       } else {
