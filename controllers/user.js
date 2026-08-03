@@ -174,40 +174,37 @@ exports.verifyOtp = async (req, res) => {
   const { email, otp, token } = req.body;
 
   try {
-    // 1. Defensive Guard: Ensure all values are present before processing
-    if (!email || !otp || !token) {
-      return res.status(200).json({ 
-        success: false, 
-        error: "Missing verification data. Please request a new code." 
-      });
-    }
-
-    // 2. Prevent crashes from unexpected types
-    if (typeof email !== 'string' || typeof token !== 'string') {
+    if (!token || typeof token !== 'string') {
       return res.status(200).json({
         success: false,
-        error: "Invalid data format received."
+        error: "Verification session missing or expired. Please request a new code."
       });
     }
 
-    const sanitizedEmail = email.trim().toLowerCase();
+    if (!email || !otp) {
+      return res.status(200).json({
+        success: false,
+        error: "Email and OTP code are required."
+      });
+    }
 
-    // 3. Ensure the token is split-able to prevent structural parsing crashes
+    const sanitizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+
     if (!token.includes('.')) {
-      return res.status(200).json({ 
-        success: false, 
-        error: "Malformed verification token." 
+      return res.status(200).json({
+        success: false,
+        error: "Invalid token format."
       });
     }
-
     const [originalHash, expiresAt] = token.split('.');
 
-    // 4. Enforce Expiration Time-To-Live
     if (Date.now() > parseInt(expiresAt, 10)) {
-      return res.status(200).json({ success: false, error: "Code expired. Please request a new one." });
+      return res.status(200).json({
+        success: false,
+        error: "Code expired. Please request a new one."
+      });
     }
 
-    // 5. Re-hash and compare mathematically
     const dataToHash = `${sanitizedEmail}.${otp}.${expiresAt}`;
     const computedHash = crypto
       .createHmac('sha256', process.env.OTP_SECRET || 'fallback_development_secret')
@@ -215,22 +212,22 @@ exports.verifyOtp = async (req, res) => {
       .digest('hex');
 
     if (originalHash !== computedHash) {
-      return res.status(200).json({ success: false, error: "Incorrect verification code." });
+      return res.status(200).json({
+        success: false,
+        error: "Incorrect verification code."
+      });
     }
 
-    // Success!
     return res.status(200).json({
       success: true,
       message: "Email verified successfully."
     });
 
   } catch (err) {
-    // Look at your terminal console running the node/express server to see this printout:
-    console.error("Backend Verification Error Stack:", err); 
-    
+    console.error("Backend Verification Error:", err);
     return res.status(200).json({
       success: false,
-      error: "Verification failed due to a internal server error."
+      error: "Verification failed due to a server error."
     });
   }
 };
