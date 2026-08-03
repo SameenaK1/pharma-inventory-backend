@@ -13,17 +13,18 @@ exports.signUp = async (req, res, next) => {
   // Initial field validation including role
   if (!(username && fullname && email && password)) {
     console.error("Validation Error: All fields are mandatory");
-    return res.status(400).json({ error: "All fields are mandatory" });
+    return res.status(200).json({ success: false, error: "All fields are mandatory" });
   }
 
   if (!validate.isEmail(email)) {
     console.error("Validation Error: Invalid Email");
-    return res.status(400).json({ error: "Invalid Email format" });
+    return res.status(200).json({ success: false, error: "Invalid Email format" });
   }
 
   if (!validate.isStrongPassword(password)) {
     console.error("Validation Error: Weak Password");
-    return res.status(400).json({
+    return res.status(200).json({
+      success: false,
       error: "Password must be at least 8 characters long and include uppercase, lowercase, numbers, and symbols."
     });
   }
@@ -47,7 +48,7 @@ exports.signUp = async (req, res, next) => {
 
     // Catch unique violations from Postgres (username or email duplicate)
     if (err.code === "23505") {
-      return res.status(400).json({ error: "Username or Email already exists." });
+      return res.status(200).json({ success: false, error: "Username or Email already exists." });
     }
     return res.status(500).json({ error: "Internal server registration error" });
   }
@@ -58,11 +59,11 @@ exports.logIn = async (req, res, next) => {
 
   if (!(email && password)) {
     console.error("Validation Error: Missing credentials");
-    return res.status(400).json({ error: "All fields are mandatory" });
+    return res.status(200).json({ success: false, error: "All fields are mandatory" });
   }
 
   if (!validate.isEmail(email)) {
-    return res.status(400).json({ error: "Invalid Email format" });
+    return res.status(200).json({ success: false, error: "Invalid Email format" });
   }
 
   try {
@@ -70,14 +71,14 @@ exports.logIn = async (req, res, next) => {
     const user = await User.findOne(email);
 
     if (!user) {
-      return res.status(400).json({ error: "No account with that email found" });
+      return res.status(200).json({ success: false, error: "No account with that email found" });
     }
 
     // Compare text input with password hash string from Postgres
     const match = await bcrypt.compare(password, user.password);
 
     if (!match) {
-      return res.status(400).json({ error: "Incorrect password" });
+      return res.status(200).json({ success: false, error: "Incorrect password" });
     }
 
     // Update database tracking metrics (non-blocking)
@@ -117,37 +118,40 @@ exports.sendOtp = async (req, res) => {
   const { email } = req.body;
 
   try {
-    // 🛡️ Gate 1: Use your model's built-in finder to check if the user exists
-    const existingUser = await User.findOne(email);
-
+    // 1. Check if user already exists
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
-      // 🛑 STOP: Account already exists. Do not send email.
-      return res.status(400).json({
-        success: false,
-        message: "Already have an account with this email"
-      });
+      return res.status(200).json({ success: false, error: "Email already registered" });
     }
 
-    // 2. If existingUser is null, safely proceed with OTP generation & delivery
+    // 2. Generate a secure 6-digit OTP string
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // Store in your pendingUsers Map
-    pendingUsers.set(email, { otp, createdAt: Date.now() });
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 🌟 Set to 10 minutes to match your mailer HTML description
 
-    // Send the email using your mailer utility
-    await sendOtpEmail(email, otp); 
+    // 3. Store the temporary data in your pendingUsers Map
+    pendingUsers.set(email, { otp, expiresAt });
 
+    // 4. Trigger your custom separate mailer function
+    // Pass the email and the generated otp directly
+    await sendOtpEmail(email, otp);
+
+    // 5. Success Response: Tells the frontend to stop the spinner and move to the OTP input stage
     return res.status(200).json({
       success: true,
-      message: "OTP sent successfully to your email."
+      message: "OTP sent successfully!"
     });
 
-  } catch (error) {
-    console.error("Error in sendOtp block:", error);
-    return res.status(500).json({ success: false, message: "Server error while processing OTP." });
+  } catch (err) {
+    console.error("Backend OTP Error:", err);
+    
+    // 🌟 Safety Net: If nodemailer fails or network times out, this catches it,
+    // tells the frontend to kill the spinner, and shows the exact error on screen.
+    return res.status(200).json({
+      success: false,
+      error: "Failed to send verification email. Please check your network and try again."
+    });
   }
 };
-
 // 2. Verify OTP Controller (Make sure it uses the same pendingUsers Map)
 exports.verifyOtp = async (req, res) => {
   const { email, otp } = req.body;
@@ -155,16 +159,16 @@ exports.verifyOtp = async (req, res) => {
   const userData = pendingUsers.get(email);
 
   if (!userData) {
-    return res.status(400).json({ error: "No OTP requested for this email" });
+    return res.status(200).json({ success: false, error: "No OTP requested for this email" });
   }
 
   if (Date.now() > userData.expiresAt) {
     pendingUsers.delete(email);
-    return res.status(400).json({ error: "OTP has expired" });
+    return res.status(200).json({ success: false, error: "OTP has expired" });
   }
 
   if (userData.otp !== otp) {
-    return res.status(400).json({ error: "Invalid OTP code" });
+    return res.status(200).json({ success: false, error: "Invalid OTP code" });
   }
 
   // Mark as verified
