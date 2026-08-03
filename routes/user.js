@@ -9,7 +9,6 @@ router.post("/register", userController.signUp);
 
 // Route for User Login
 router.post("/login", userController.logIn);
-router.post("/verify-otp", userController.verifyOtp);
 router.get("/profile", reqAuth, userController.getUserProfile);
 
 module.exports = router;

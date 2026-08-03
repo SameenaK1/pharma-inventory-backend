@@ -3,6 +3,7 @@ const validate = require("validator");
 const User = require("../models/user");
 const createToken = require("../token");
 const { sendOtpEmail } = require("../utils/mailer");
+const crypto = require('crypto');
 
 const pendingUsers = new Map();
 // 1. SIGN UP CONTROLLER
@@ -118,62 +119,118 @@ exports.sendOtp = async (req, res) => {
   const { email } = req.body;
 
   try {
+    if (!email || typeof email !== 'string') {
+      return res.status(200).json({
+        success: false,
+        error: "Email address is required."
+      });
+    }
+    const sanitizedEmail = email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(sanitizedEmail)) {
+      return res.status(200).json({
+        success: false,
+        error: "Please enter a valid email address."
+      });
+    }
     // 1. Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne(sanitizedEmail);
     if (existingUser) {
       return res.status(200).json({ success: false, error: "Email already registered" });
     }
 
     // 2. Generate a secure 6-digit OTP string
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = require("crypto").randomInt(100000, 1000000).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 🌟 Set to 10 minutes to match your mailer HTML description
+    const dataToHash = `${sanitizedEmail}.${otp}.${expiresAt}`;
+    const hash = crypto
+      .createHmac('sha256', process.env.OTP_SECRET || 'fallback_development_secret')
+      .update(dataToHash)
+      .digest('hex');
 
-    // 3. Store the temporary data in your pendingUsers Map
-    pendingUsers.set(email, { otp, expiresAt });
+    // Combine hash and expiration to send to frontend
+    const verificationToken = `${hash}.${expiresAt}`;
 
-    // 4. Trigger your custom separate mailer function
-    // Pass the email and the generated otp directly
-    await sendOtpEmail(email, otp);
+    // 5. Trigger Mailer
+    await sendOtpEmail(sanitizedEmail, otp);
 
-    // 5. Success Response: Tells the frontend to stop the spinner and move to the OTP input stage
+    // 6. Return token to frontend (it holds the state, not the server!)
     return res.status(200).json({
       success: true,
-      message: "OTP sent successfully!"
+      message: "OTP sent successfully!",
+      token: verificationToken // 🌟 Frontend will store this in state
     });
 
   } catch (err) {
     console.error("Backend OTP Error:", err);
-    
-    // 🌟 Safety Net: If nodemailer fails or network times out, this catches it,
-    // tells the frontend to kill the spinner, and shows the exact error on screen.
     return res.status(200).json({
       success: false,
-      error: "Failed to send verification email. Please check your network and try again."
+      error: "Failed to process verification request. Please try again."
     });
   }
 };
 // 2. Verify OTP Controller (Make sure it uses the same pendingUsers Map)
 exports.verifyOtp = async (req, res) => {
-  const { email, otp } = req.body;
+  const { email, otp, token } = req.body;
 
-  const userData = pendingUsers.get(email);
+  try {
+    // 1. Defensive Guard: Ensure all values are present before processing
+    if (!email || !otp || !token) {
+      return res.status(200).json({ 
+        success: false, 
+        error: "Missing verification data. Please request a new code." 
+      });
+    }
 
-  if (!userData) {
-    return res.status(200).json({ success: false, error: "No OTP requested for this email" });
+    // 2. Prevent crashes from unexpected types
+    if (typeof email !== 'string' || typeof token !== 'string') {
+      return res.status(200).json({
+        success: false,
+        error: "Invalid data format received."
+      });
+    }
+
+    const sanitizedEmail = email.trim().toLowerCase();
+
+    // 3. Ensure the token is split-able to prevent structural parsing crashes
+    if (!token.includes('.')) {
+      return res.status(200).json({ 
+        success: false, 
+        error: "Malformed verification token." 
+      });
+    }
+
+    const [originalHash, expiresAt] = token.split('.');
+
+    // 4. Enforce Expiration Time-To-Live
+    if (Date.now() > parseInt(expiresAt, 10)) {
+      return res.status(200).json({ success: false, error: "Code expired. Please request a new one." });
+    }
+
+    // 5. Re-hash and compare mathematically
+    const dataToHash = `${sanitizedEmail}.${otp}.${expiresAt}`;
+    const computedHash = crypto
+      .createHmac('sha256', process.env.OTP_SECRET || 'fallback_development_secret')
+      .update(dataToHash)
+      .digest('hex');
+
+    if (originalHash !== computedHash) {
+      return res.status(200).json({ success: false, error: "Incorrect verification code." });
+    }
+
+    // Success!
+    return res.status(200).json({
+      success: true,
+      message: "Email verified successfully."
+    });
+
+  } catch (err) {
+    // Look at your terminal console running the node/express server to see this printout:
+    console.error("Backend Verification Error Stack:", err); 
+    
+    return res.status(200).json({
+      success: false,
+      error: "Verification failed due to a internal server error."
+    });
   }
-
-  if (Date.now() > userData.expiresAt) {
-    pendingUsers.delete(email);
-    return res.status(200).json({ success: false, error: "OTP has expired" });
-  }
-
-  if (userData.otp !== otp) {
-    return res.status(200).json({ success: false, error: "Invalid OTP code" });
-  }
-
-  // Mark as verified
-  userData.verified = true;
-  pendingUsers.set(email, userData);
-
-  return res.status(200).json({ success: true, message: "Email verified successfully" });
 };

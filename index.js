@@ -38,6 +38,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Something went wrong!" });
 });
 
-app.listen(PORT, "127.0.0.1", () => {
-  console.log(`🚀 Application Started at http://127.0.0.1:${PORT}/`);
-});
+ app.listen(PORT, () => {
+   console.log(`🚀 Application Started at http://localhost:${PORT}/`);
+ });
