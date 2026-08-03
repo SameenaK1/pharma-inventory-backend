@@ -11,22 +11,19 @@ const reqAuth = require("./middleware/reqAuth");
 const cors = require("cors");
 
 const conn = require("./database");
- const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
-   .split(",")
-   .map((s) => s.trim())
-   .filter(Boolean);
-// app.use((req, res, next) => {
-//   res.setHeader("Access-Control-Allow-Origin", "*");
-//   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE");
-//   res.setHeader("Access-Control-Allow-Headers", "Content-type,Authorization");
-//   next();
-// });
-app.use(cors({
-   origin: allowedOrigins,
+const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const corsOptions = {
+  origin: allowedOrigins,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
-}));
+};
+
+app.use(cors(corsOptions));
 
 // Used to get data in post data, all data is encoded in text using this parser module
 app.use(bodyParser.json());
@@ -41,6 +38,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Something went wrong!" });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Application Started at http://localhost:${PORT}/`);
+app.listen(PORT, "127.0.0.1", () => {
+  console.log(`🚀 Application Started at http://127.0.0.1:${PORT}/`);
 });

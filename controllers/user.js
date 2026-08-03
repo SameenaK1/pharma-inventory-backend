@@ -1,8 +1,10 @@
 const bcrypt = require("bcrypt");
 const validate = require("validator");
 const User = require("../models/user");
-const createToken = require("../token"); // Assumes this utility signs your JWT
+const createToken = require("../token");
+const { sendOtpEmail } = require("../utils/mailer");
 
+const pendingUsers = new Map();
 // 1. SIGN UP CONTROLLER
 exports.signUp = async (req, res, next) => {
   // 🌟 Extracted role from incoming request body
@@ -18,11 +20,11 @@ exports.signUp = async (req, res, next) => {
     console.error("Validation Error: Invalid Email");
     return res.status(400).json({ error: "Invalid Email format" });
   }
-  
+
   if (!validate.isStrongPassword(password)) {
     console.error("Validation Error: Weak Password");
-    return res.status(400).json({ 
-      error: "Password must be at least 8 characters long and include uppercase, lowercase, numbers, and symbols." 
+    return res.status(400).json({
+      error: "Password must be at least 8 characters long and include uppercase, lowercase, numbers, and symbols."
     });
   }
 
@@ -42,7 +44,7 @@ exports.signUp = async (req, res, next) => {
 
   } catch (err) {
     console.error("Signup Catch Block Error:", err);
-    
+
     // Catch unique violations from Postgres (username or email duplicate)
     if (err.code === "23505") {
       return res.status(400).json({ error: "Username or Email already exists." });
@@ -51,7 +53,6 @@ exports.signUp = async (req, res, next) => {
   }
 };
 
-// 2. LOG IN CONTROLLER
 exports.logIn = async (req, res, next) => {
   const { email, password } = req.body;
 
@@ -98,17 +99,77 @@ exports.logIn = async (req, res, next) => {
 exports.getUserProfile = async (req, res, next) => {
   try {
     // req.user is populated by your reqAuth middleware if the token is valid
-    const userId = req.user.id; 
-    
+    const userId = req.user.id;
+
     const userProfile = await User.findById(userId);
-    
+
     if (!userProfile) {
       return res.status(404).json({ success: false, error: "User profile not found" });
     }
-    
+
     return res.status(200).json({ success: true, data: userProfile });
   } catch (err) {
     console.error("Profile Fetch Error:", err);
     return res.status(500).json({ success: false, error: "Failed to fetch user profile" });
   }
+};
+exports.sendOtp = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    // 🛡️ Gate 1: Use your model's built-in finder to check if the user exists
+    const existingUser = await User.findOne(email);
+
+    if (existingUser) {
+      // 🛑 STOP: Account already exists. Do not send email.
+      return res.status(400).json({
+        success: false,
+        message: "Already have an account with this email"
+      });
+    }
+
+    // 2. If existingUser is null, safely proceed with OTP generation & delivery
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Store in your pendingUsers Map
+    pendingUsers.set(email, { otp, createdAt: Date.now() });
+
+    // Send the email using your mailer utility
+    await sendOtpEmail(email, otp); 
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP sent successfully to your email."
+    });
+
+  } catch (error) {
+    console.error("Error in sendOtp block:", error);
+    return res.status(500).json({ success: false, message: "Server error while processing OTP." });
+  }
+};
+
+// 2. Verify OTP Controller (Make sure it uses the same pendingUsers Map)
+exports.verifyOtp = async (req, res) => {
+  const { email, otp } = req.body;
+
+  const userData = pendingUsers.get(email);
+
+  if (!userData) {
+    return res.status(400).json({ error: "No OTP requested for this email" });
+  }
+
+  if (Date.now() > userData.expiresAt) {
+    pendingUsers.delete(email);
+    return res.status(400).json({ error: "OTP has expired" });
+  }
+
+  if (userData.otp !== otp) {
+    return res.status(400).json({ error: "Invalid OTP code" });
+  }
+
+  // Mark as verified
+  userData.verified = true;
+  pendingUsers.set(email, userData);
+
+  return res.status(200).json({ success: true, message: "Email verified successfully" });
 };
