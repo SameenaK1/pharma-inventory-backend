@@ -1,8 +1,8 @@
 const express = require("express");
 const medicine = require("../controllers/medicine");
-
+const reqAuth = require("../middleware/reqAuth");
 const router = express.Router();
-
+router.use(reqAuth);
 // POST endpoint for adding medicines
 router.post("/add-medicine", medicine.addMedicine);
 
