@@ -138,7 +138,6 @@ class Inventory {
    * @throws {Error} If table creation or database operation fails
    */
   async addInventory() {
-    // Ensure table exists first
     try {
       await Inventory.ensureTableExists();
     } catch (error) {

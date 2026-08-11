@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/user"); // Pointing to your clean class model
+const User = require("../models/user"); 
 
 
 const reqAuth = async (req, res, next) => {
@@ -14,7 +14,7 @@ const reqAuth = async (req, res, next) => {
     if (!authorization || typeof authorization !== "string") {
       return res.status(401).json({ error: "Authorization token required!" });
     }
-    const token = authorization; // Expecting "Bearer <token>"
+    const token = authorization; 
 
     let decoded;
     try {
