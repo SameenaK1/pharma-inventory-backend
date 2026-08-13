@@ -1,35 +1,30 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/user"); 
+const User = require("../models/user");
 
 
 const reqAuth = async (req, res, next) => {
   try {
-    if (!process.env.JWT_SECRET) {
-      console.error("CRITICAL AUTH ERROR: JWT_SECRET environment variable is missing.");
-      return res.status(500).json({ error: "Internal server configuration error" });
+    let token;
+    if (req.headers.authorization) {
+      const authorization = req.headers.authorization;
+      token = authorization.startsWith('Bearer ')
+        ? authorization.split(' ')[1] 
+        : authorization;
+    } else if (req.cookies?.token) {
+      // 2. Fallback to cookie (Primary for Browser sessions)
+      token = req.cookies.token;
     }
-    
-    const { authorization } = req.headers;
-    console.log("Authorization Header Received:", authorization);
-    if (!authorization || typeof authorization !== "string") {
-      return res.status(401).json({ error: "Authorization token required!" });
+    if (!token) {
+      return res.status(401).json({ success: false, error: "Unauthorized: No session cookie provided" });
     }
-    const token = authorization; 
-
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (jwtErr) {
-      if (jwtErr instanceof jwt.TokenExpiredError) {
-        return res.status(401).json({ error: "Token has expired. Please log in again." });
-      }
-      if (jwtErr instanceof jwt.JsonWebTokenError) {
-        return res.status(401).json({ error: "Invalid token signature." });
-      }
-      return res.status(401).json({ error: "Token verification failed." });
+    } catch (err) {
+      return res.status(401).json({ success: false, error: "Unauthorized: Invalid or expired token" });
     }
 
-    const userId = decoded?.id;
+    const userId = decoded?.id || decoded?.userId || decoded?._id;
 
     if (!userId) {
       console.warn("Auth Middleware Warning: JWT token missing user identification payload.", decoded);

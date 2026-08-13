@@ -6,7 +6,6 @@ const { sendOtpEmail } = require("../utils/mailer");
 const crypto = require('crypto');
 
 const pendingUsers = new Map();
-// 1. SIGN UP CONTROLLER
 exports.signUp = async (req, res, next) => {
   // 🌟 Extracted role from incoming request body
   const { role = "pharmacist", username, fullname, email, password } = req.body;
@@ -68,51 +67,88 @@ exports.logIn = async (req, res, next) => {
   }
 
   try {
-    // Look up the user by email
     const user = await User.findOne(email);
 
     if (!user) {
       return res.status(200).json({ success: false, error: "No account with that email found" });
     }
 
-    // Compare text input with password hash string from Postgres
     const match = await bcrypt.compare(password, user.password);
 
     if (!match) {
       return res.status(200).json({ success: false, error: "Incorrect password" });
     }
 
-    // Update database tracking metrics (non-blocking)
     await User.logged_in(email);
 
-    // Generate the authentication token
     const token = createToken(user.id, user.username, email);
-
-    // Return single unified JSON response payload to client
-    return res.status(200).json({ username: user.username, token: token });
+    res.cookie('token', token, {
+      httpOnly: true, // Prevents JavaScript (XSS attacks) from reading the cookie
+      secure: process.env.NODE_ENV === 'production', // Use HTTPS in production
+      sameSite: 'lax', // Protects against CSRF attacks ('strict' or 'lax')
+      path: '/',
+      maxAge: 24 * 60 * 60 * 1000, // Cookie expiration time (e.g., 1 day in milliseconds)
+    });
+    return res.status(200).json({
+      success: true,
+      user: { username: user.username, email: user.email, role: user.role }
+    });
 
   } catch (err) {
-    console.error("Login Catch Block Error:", err);
+    console.error("Login Error:", err);
     return res.status(500).json({ error: "Internal server login error" });
   }
 };
+exports.logOut = (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/'
+  });
+  return res.status(200).json({ success: true, message: "Logged out successfully" });
+};
 
-// 3. GET USER PROFILE CONTROLLER
-exports.getUserProfile = async (req, res, next) => {
+// File: backend/controllers/user.js [BACKEND]
+
+exports.getUserProfile = async (req, res) => {
   try {
-    // req.user is populated by your reqAuth middleware if the token is valid
-    const userId = req.user.id;
+    // 1. Get decoded user payload from req.user (attached by reqAuth middleware)
+    const currentUser = req.user;
 
-    const userProfile = await User.findById(userId);
+    if (!currentUser) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
 
-    if (!userProfile) {
+    // Extract user ID (adjust property name based on what your JWT payload stores: id, userId, or _id)
+    const userId = currentUser.id || currentUser.userId || currentUser._id;
+
+    // 2. Query your database for the user profile
+    const foundUser = await User.findById(userId); // Or User.findOne({ email: currentUser.email })
+
+    if (!foundUser) {
       return res.status(404).json({ success: false, error: "User profile not found" });
     }
 
-    return res.status(200).json({ success: true, data: userProfile });
+    // 3. Return the user profile data
+    return res.status(200).json({
+      success: true,
+      data: {
+        id: foundUser.id || foundUser._id,
+        username: foundUser.username,
+        email: foundUser.email,
+        role: foundUser.role,
+        first_name: foundUser.first_name || null,
+        last_name: foundUser.last_name || null,
+        phone_number: foundUser.phone_number || null,
+        license_number: foundUser.license_number || null,
+        status: foundUser.status || "active",
+      },
+    });
+
   } catch (err) {
     console.error("Profile Fetch Error:", err);
-    return res.status(500).json({ success: false, error: "Failed to fetch user profile" });
+    return res.status(500).json({ success: false, error: "Server error fetching user profile" });
   }
 };
 exports.sendOtp = async (req, res) => {
@@ -169,7 +205,6 @@ exports.sendOtp = async (req, res) => {
     });
   }
 };
-// 2. Verify OTP Controller (Make sure it uses the same pendingUsers Map)
 exports.verifyOtp = async (req, res) => {
   const { email, otp, token } = req.body;
 
