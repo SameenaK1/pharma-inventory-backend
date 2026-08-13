@@ -82,16 +82,27 @@ exports.logIn = async (req, res, next) => {
     await User.logged_in(email);
 
     const token = createToken(user.id, user.username, email);
+    const userData = { username: user.username, email: user.email, role: user.role };
+
     res.cookie('token', token, {
       httpOnly: true, // Prevents JavaScript (XSS attacks) from reading the cookie
       secure: process.env.NODE_ENV === 'production', // Use HTTPS in production
       sameSite: 'lax', // Protects against CSRF attacks ('strict' or 'lax')
       path: '/',
-      maxAge: 24 * 60 * 60 * 1000, // Cookie expiration time (e.g., 1 day in milliseconds)
+      maxAge: 14 * 60 * 60 * 1000, // Cookie expiration time (e.g., 1 day in milliseconds)
     });
+
+    res.cookie('user', JSON.stringify(userData), {
+      httpOnly: false, // Allows the frontend to read user details from the cookie when needed
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 14 * 60 * 60 * 1000,
+    });
+
     return res.status(200).json({
       success: true,
-      user: { username: user.username, email: user.email, role: user.role }
+      user: userData
     });
 
   } catch (err) {
