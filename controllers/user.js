@@ -129,53 +129,6 @@ exports.logOut = (req, res) => {
 
 // File: backend/controllers/user.js [BACKEND]
 
-exports.getUserProfile = async (req, res) => {
-  try {
-    // 1. Get decoded user payload from req.user (attached by reqAuth middleware)
-    if (!req.cookies?.token) {
-      // Return 200 instead of 401 so the browser doesn't log a network error
-      return res.status(200).json({
-        success: false,
-        authenticated: false,
-        data: null
-      });
-    }
-    const currentUser = req.user;
-    if (!currentUser) {
-      return res.status(401).json({ success: false, error: "Unauthorized" });
-    }
-
-    // Extract user ID (adjust property name based on what your JWT payload stores: id, userId, or _id)
-    const userId = currentUser.id || currentUser.userId || currentUser._id;
-
-    // 2. Query your database for the user profile
-    const foundUser = await User.findById(userId); // Or User.findOne({ email: currentUser.email })
-
-    if (!foundUser) {
-      return res.status(404).json({ success: false, error: "User profile not found" });
-    }
-
-    // 3. Return the user profile data
-    return res.status(200).json({
-      success: true,
-      data: {
-        id: foundUser.id || foundUser._id,
-        username: foundUser.username,
-        email: foundUser.email,
-        role: foundUser.role,
-        first_name: foundUser.first_name || null,
-        last_name: foundUser.last_name || null,
-        phone_number: foundUser.phone_number || null,
-        license_number: foundUser.license_number || null,
-        status: foundUser.status || "active",
-      },
-    });
-
-  } catch (err) {
-    console.error("Profile Fetch Error:", err);
-    return res.status(500).json({ success: false, error: "Server error fetching user profile" });
-  }
-};
 exports.sendOtp = async (req, res) => {
   const { email } = req.body;
 
