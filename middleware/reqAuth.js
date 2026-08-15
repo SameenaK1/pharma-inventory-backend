@@ -25,7 +25,6 @@ const reqAuth = async (req, res, next) => {
     }
 
     const userId = decoded?.id || decoded?.userId || decoded?._id;
-    console.log("Decoded JWT Payload:", decoded);
 
     if (!userId) {
       console.warn("Auth Middleware Warning: JWT token missing user identification payload.", decoded);
