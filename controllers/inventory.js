@@ -23,6 +23,7 @@ exports.addInventory = async (req, res, next) => {
   const shelfRackInfoRaw = payload.shelfrackinfo;
   const shelfRackInfo = typeof shelfRackInfoRaw === "string" ? shelfRackInfoRaw : (shelfRackInfoRaw == null ? null : String(shelfRackInfoRaw));
   const stockQuantity = payload.stockquantity ? parseInt(payload.stockquantity) : null;
+  const userName = req.user?.username || req.user?.email || payload.username || null;
   const purchasePrice = payload.purchaseprice ? parseFloat(payload.purchaseprice) : null;
   const sellingPrice = payload.sellingprice ? parseFloat(payload.sellingprice) : null;
   if (mrp && (isNaN(mrp) || mrp < 0)) {
@@ -42,7 +43,7 @@ exports.addInventory = async (req, res, next) => {
   if (expiryDate && isNaN(expiryDate.getTime())) {
     return res.status(400).json({ error: "Invalid expiry date format" });
   }
-  const userName = payload.username;
+ // const userName = payload.username;
   const insertDate = payload.insertdate;
   const updateDate = payload.updatedate;
 
@@ -106,7 +107,7 @@ exports.getInventory = async (req, res, next) => {
     );
 
     const medicines = result.data;
-    const pagination = result.pagination;
+    const pagination = result?.pagination || { page: parsedPage, limit: safeLimit, total: 0 };
 
     const searchKeys = Object.keys(searchParams);
     const searchSummary = searchKeys.length > 0
@@ -124,7 +125,9 @@ exports.getInventory = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: `Loaded records matching (${searchSummary})`,
+      message: medicines.length > 0
+        ? `Loaded records matching (${searchSummary})`
+        : `No medicines found matching parameters (${searchSummary})`,
       data: medicines,
       pagination: pagination
     });
@@ -133,7 +136,7 @@ exports.getInventory = async (req, res, next) => {
     console.error(`Inventory fetch error:`, err);
     return res.status(500).json({
       success: false,
-      error: "Internal server error",
+      error: "Internal server error but",
       errorId: `ERR-${Date.now()}`
     });
   }
@@ -143,8 +146,8 @@ exports.getInventory = async (req, res, next) => {
 exports.deleteInventory = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { user, reason } = req.query;
-
+    //const { user, reason } = req.query;
+const user = req.user?.username || req.user?.email || req.query.user || "System";
     if (!id || isNaN(id) || parseInt(id) <= 0) {
       return res.status(400).json({
         success: false,
