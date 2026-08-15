@@ -83,7 +83,13 @@ exports.logIn = async (req, res, next) => {
 
     const token = createToken(user.id, user.username, email);
     const userData = { username: user.username, email: user.email, role: user.role };
-
+    res.cookie('has_session', 'true', {
+      httpOnly: false, // React CAN read this to know a session exists
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 14 * 60 * 60 * 1000, // Same expiry as token
+    });
     res.cookie('token', token, {
       httpOnly: true, // Prevents JavaScript (XSS attacks) from reading the cookie
       secure: process.env.NODE_ENV === 'production', // Use HTTPS in production
@@ -111,6 +117,7 @@ exports.logIn = async (req, res, next) => {
   }
 };
 exports.logOut = (req, res) => {
+  res.clearCookie('has_session');
   res.clearCookie('token', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -125,8 +132,15 @@ exports.logOut = (req, res) => {
 exports.getUserProfile = async (req, res) => {
   try {
     // 1. Get decoded user payload from req.user (attached by reqAuth middleware)
+    if (!req.cookies?.token) {
+      // Return 200 instead of 401 so the browser doesn't log a network error
+      return res.status(200).json({
+        success: false,
+        authenticated: false,
+        data: null
+      });
+    }
     const currentUser = req.user;
-
     if (!currentUser) {
       return res.status(401).json({ success: false, error: "Unauthorized" });
     }
