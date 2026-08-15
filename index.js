@@ -28,7 +28,6 @@ app.use(cookieParser());
 
 app.use(cors(corsOptions));
 
-app.use(bodyParser.json());
 app.use("/user/", userRoutes);
 app.use("/medicine/", reqAuth, medicineRoutes);
 app.use("/inventory/", reqAuth, inventoryRoutes);
