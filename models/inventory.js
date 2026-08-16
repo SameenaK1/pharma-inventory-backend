@@ -205,7 +205,7 @@ class Inventory {
    * @returns {Promise<Array>} Array of inventory records matching the search criteria
    * @throws {Error} If database operations fail
    */
-static async searchInventory(searchParams = {}, userOrderBy = "name", page = 1, limit = 50) {
+  static async searchInventory(emailid, searchParams = {}, userOrderBy = "name", page = 1, limit = 50) {
     try {
       if (typeof Inventory.ensureTableExists === "function") {
         await Inventory.ensureTableExists();
@@ -215,7 +215,7 @@ static async searchInventory(searchParams = {}, userOrderBy = "name", page = 1, 
     }
 
     const allowedColumns = ["name", "manufacturer_name", "type", "composition1", "composition2", "batch_number"];
-    
+
     const safeUserOrderBy = allowedColumns.includes(userOrderBy) ? userOrderBy : "name";
 
     const whereClauses = [];
@@ -269,6 +269,10 @@ static async searchInventory(searchParams = {}, userOrderBy = "name", page = 1, 
       console.warn('Could not get total count:', countErr.message);
       totalCount = 0;
     }
+    ///////////////////////////////
+
+    whereClauses.push(`user_name = $${queryValues.length + 1}`);
+    queryValues.push(emailid);
 
     // 5. Build the Main Query for Records
     let queryStr = "SELECT * FROM pharma.inventory";
@@ -288,7 +292,6 @@ static async searchInventory(searchParams = {}, userOrderBy = "name", page = 1, 
     } else {
       queryStr += " ORDER BY insert_date DESC";
     }
-
     // Pagination bounds
     const offset = (page - 1) * limit;
     queryStr += ` LIMIT ${limit} OFFSET ${offset};`;
@@ -316,7 +319,7 @@ static async searchInventory(searchParams = {}, userOrderBy = "name", page = 1, 
     };
   }
 
-  static async deleteById(id, deletedBy = 'system', deletedReason = 'User Request') {
+  static async deleteById(id, deletedBy = 'system', reason = 'User Request') {
     // Start a transaction so if anything fails, the database rolls back safely
     await db.query("BEGIN");
 
@@ -367,7 +370,7 @@ static async searchInventory(searchParams = {}, userOrderBy = "name", page = 1, 
         oldData.insert_date,
         oldData.update_date,
         deletedBy,
-        deletedReason
+        reason
       ];
 
       try {
