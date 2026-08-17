@@ -97,7 +97,7 @@ exports.getInventory = async (req, res, next) => {
     const parsedLimit = parseInt(limit, 10) || 50;
     const safeLimit = Math.min(parsedLimit, 50);
     const safeSortBy = sortBy || 'name';
-    const emailid = req.user?.email ||null;
+    const emailid = req.user?.email || null;
     // Call the model passing the search object directly
     const result = await Inventory.searchInventory(
       emailid,
@@ -156,8 +156,8 @@ exports.deleteInventory = async (req, res, next) => {
         message: "Missing required parameter: id"
       });
     }
-
-    const deletedCount = await Inventory.deleteById(id, user, reason);
+console.log(req.user?.email)
+    const deletedCount = await Inventory.deleteById(id, user, reason, req.user?.email);
 
     if (deletedCount === 0) {
       return res.status(404).json({

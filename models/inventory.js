@@ -319,7 +319,7 @@ class Inventory {
     };
   }
 
-  static async deleteById(id, deletedBy = 'system', reason = 'User Request') {
+  static async deleteById(id, deletedBy = 'system', reason = 'User Request',useremail) {
     // Start a transaction so if anything fails, the database rolls back safely
     await db.query("BEGIN");
 
@@ -327,10 +327,10 @@ class Inventory {
       // 1. Delete the item and IMMEDIATELY return its data using RETURNING *
       const deleteQueryStr = `
       DELETE FROM pharma.inventory 
-      WHERE id = $1 
+      WHERE id = $1 and user_name = $2
       RETURNING *;
     `;
-      const deleteResult = await db.query(deleteQueryStr, [id]);
+      const deleteResult = await db.query(deleteQueryStr, [id, useremail]);
 
       // If no row was found/deleted, roll back and return 0
       if (deleteResult.rowCount === 0) {
