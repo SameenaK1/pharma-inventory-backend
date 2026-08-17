@@ -156,7 +156,6 @@ exports.deleteInventory = async (req, res, next) => {
         message: "Missing required parameter: id"
       });
     }
-console.log(req.user?.email)
     const deletedCount = await Inventory.deleteById(id, user, reason, req.user?.email);
 
     if (deletedCount === 0) {
