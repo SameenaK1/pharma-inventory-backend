@@ -6,6 +6,41 @@ const { sendOtpEmail } = require("../utils/mailer");
 const crypto = require('crypto');
 
 const pendingUsers = new Map();
+const passwordResetSessions = new Map();
+
+const createOtpToken = (email, otp, expiresAt) => {
+  const sanitizedEmail = String(email || '').trim().toLowerCase();
+  const dataToHash = `${sanitizedEmail}.${otp}.${expiresAt}`;
+  const hash = crypto
+    .createHmac('sha256', process.env.OTP_SECRET || 'fallback_development_secret')
+    .update(dataToHash)
+    .digest('hex');
+
+  return `${hash}.${expiresAt}`;
+};
+
+const validateOtpToken = (email, otp, token) => {
+  if (!token || typeof token !== 'string' || !token.includes('.')) {
+    return { valid: false, error: 'Verification session missing or expired. Please request a new code.' };
+  }
+
+  const [originalHash, expiresAt] = token.split('.');
+  const parsedExpiresAt = Number(expiresAt);
+
+  if (Number.isNaN(parsedExpiresAt) || Date.now() > parsedExpiresAt) {
+    return { valid: false, error: 'Code expired. Please request a new one.' };
+  }
+
+  const expectedToken = createOtpToken(email, otp, parsedExpiresAt);
+  const expectedHash = expectedToken.split('.')[0];
+
+  if (originalHash !== expectedHash) {
+    return { valid: false, error: 'Incorrect verification code.' };
+  }
+
+  return { valid: true, expiresAt: parsedExpiresAt };
+};
+
 exports.signUp = async (req, res, next) => {
   // 🌟 Extracted role from incoming request body
   const { role = "pharmacist", username, fullname, email, password } = req.body;
@@ -187,13 +222,6 @@ exports.verifyOtp = async (req, res) => {
   const { email, otp, token } = req.body;
 
   try {
-    if (!token || typeof token !== 'string') {
-      return res.status(200).json({
-        success: false,
-        error: "Verification session missing or expired. Please request a new code."
-      });
-    }
-
     if (!email || !otp) {
       return res.status(200).json({
         success: false,
@@ -202,32 +230,12 @@ exports.verifyOtp = async (req, res) => {
     }
 
     const sanitizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const validation = validateOtpToken(sanitizedEmail, otp, token);
 
-    if (!token.includes('.')) {
+    if (!validation.valid) {
       return res.status(200).json({
         success: false,
-        error: "Invalid token format."
-      });
-    }
-    const [originalHash, expiresAt] = token.split('.');
-
-    if (Date.now() > parseInt(expiresAt, 10)) {
-      return res.status(200).json({
-        success: false,
-        error: "Code expired. Please request a new one."
-      });
-    }
-
-    const dataToHash = `${sanitizedEmail}.${otp}.${expiresAt}`;
-    const computedHash = crypto
-      .createHmac('sha256', process.env.OTP_SECRET || 'fallback_development_secret')
-      .update(dataToHash)
-      .digest('hex');
-
-    if (originalHash !== computedHash) {
-      return res.status(200).json({
-        success: false,
-        error: "Incorrect verification code."
+        error: validation.error
       });
     }
 
@@ -241,6 +249,172 @@ exports.verifyOtp = async (req, res) => {
     return res.status(200).json({
       success: false,
       error: "Verification failed due to a server error."
+    });
+  }
+};
+
+exports.requestPasswordResetOtp = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    if (!email || typeof email !== 'string') {
+      return res.status(200).json({
+        success: false,
+        error: 'Email address is required.'
+      });
+    }
+
+    const sanitizedEmail = email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(sanitizedEmail)) {
+      return res.status(200).json({
+        success: false,
+        error: 'Please enter a valid email address.'
+      });
+    }
+
+    const existingUser = await User.findOne(sanitizedEmail);
+    if (!existingUser) {
+      return res.status(200).json({
+        success: false,
+        error: 'No account with that email found.'
+      });
+    }
+
+    const otp = require('crypto').randomInt(100000, 1000000).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000;
+    const token = createOtpToken(sanitizedEmail, otp, expiresAt);
+
+    passwordResetSessions.set(sanitizedEmail, {
+      otp,
+      token,
+      expiresAt,
+      verified: false,
+    });
+
+    await sendOtpEmail(sanitizedEmail, otp);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password reset code sent successfully.',
+      token,
+    });
+  } catch (err) {
+    console.error('Password reset OTP request error:', err);
+    return res.status(200).json({
+      success: false,
+      error: 'Failed to process password reset request. Please try again.'
+    });
+  }
+};
+
+exports.verifyPasswordResetOtp = async (req, res) => {
+  const { email, otp, token } = req.body;
+
+  try {
+    if (!email || !otp) {
+      return res.status(200).json({
+        success: false,
+        error: 'Email and OTP code are required.'
+      });
+    }
+
+    const sanitizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const storedSession = passwordResetSessions.get(sanitizedEmail);
+
+    if (!storedSession) {
+      return res.status(200).json({
+        success: false,
+        error: 'Verification session missing or expired. Please request a new code.'
+      });
+    }
+
+    const validation = validateOtpToken(sanitizedEmail, otp, token);
+    if (!validation.valid) {
+      return res.status(200).json({
+        success: false,
+        error: validation.error,
+      });
+    }
+
+    if (storedSession.token !== token || storedSession.otp !== otp) {
+      return res.status(200).json({
+        success: false,
+        error: 'Incorrect verification code.'
+      });
+    }
+
+    passwordResetSessions.set(sanitizedEmail, {
+      ...storedSession,
+      verified: true,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Recovery code verified successfully.',
+      token: storedSession.token,
+    });
+  } catch (err) {
+    console.error('Password reset OTP verification error:', err);
+    return res.status(200).json({
+      success: false,
+      error: 'Verification failed due to a server error.'
+    });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  const { email, password, token } = req.body;
+
+  try {
+    if (!email || !password || !token) {
+      return res.status(200).json({
+        success: false,
+        error: 'Email, new password, and verification token are required.'
+      });
+    }
+
+    const sanitizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const storedSession = passwordResetSessions.get(sanitizedEmail);
+
+    if (!storedSession || !storedSession.verified || storedSession.token !== token) {
+      return res.status(200).json({
+        success: false,
+        error: 'Verification session missing or expired. Please restart the password reset flow.'
+      });
+    }
+
+    if (typeof password !== 'string' || password.length < 6) {
+      return res.status(200).json({
+        success: false,
+        error: 'Password must be at least 6 characters long.'
+      });
+    }
+
+    const userExists = await User.findOne(sanitizedEmail);
+    if (!userExists) {
+      return res.status(200).json({
+        success: false,
+        error: 'No account with that email found.'
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hash = await bcrypt.hash(password, salt);
+    await User.updatePassword(sanitizedEmail, hash);
+    passwordResetSessions.delete(sanitizedEmail);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password updated successfully.'
+    });
+  } catch (err) {
+    console.error('Password reset error:', err);
+    return res.status(200).json({
+      success: false,
+      error: 'Failed to reset password. Please try again.'
     });
   }
 };
