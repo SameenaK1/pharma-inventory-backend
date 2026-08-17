@@ -155,7 +155,7 @@ class Inventory {
       ON CONFLICT ON CONSTRAINT unique_medicine_identity 
       DO UPDATE SET 
         -- 1. Increment the stock quantity by adding the incoming stock
-        stock_quantity = pharma.inventory.stock_quantity + EXCLUDED.stock_quantity,
+        stock_quantity = EXCLUDED.stock_quantity,
         type = EXCLUDED.type,
         composition2 = EXCLUDED.composition2,
         mrp = EXCLUDED.mrp,
