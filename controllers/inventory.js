@@ -23,7 +23,7 @@ exports.addInventory = async (req, res, next) => {
   const shelfRackInfoRaw = payload.shelfrackinfo;
   const shelfRackInfo = typeof shelfRackInfoRaw === "string" ? shelfRackInfoRaw : (shelfRackInfoRaw == null ? null : String(shelfRackInfoRaw));
   const stockQuantity = payload.stockquantity ? parseInt(payload.stockquantity) : null;
-  const userName = req.user?.username || req.user?.email || payload.username || null;
+  const userName = req.user?.email;
   const purchasePrice = payload.purchaseprice ? parseFloat(payload.purchaseprice) : null;
   const sellingPrice = payload.sellingprice ? parseFloat(payload.sellingprice) : null;
   if (mrp && (isNaN(mrp) || mrp < 0)) {
@@ -43,7 +43,7 @@ exports.addInventory = async (req, res, next) => {
   if (expiryDate && isNaN(expiryDate.getTime())) {
     return res.status(400).json({ error: "Invalid expiry date format" });
   }
- // const userName = payload.username;
+  // const userName = payload.username;
   const insertDate = payload.insertdate;
   const updateDate = payload.updatedate;
 
@@ -97,9 +97,10 @@ exports.getInventory = async (req, res, next) => {
     const parsedLimit = parseInt(limit, 10) || 50;
     const safeLimit = Math.min(parsedLimit, 50);
     const safeSortBy = sortBy || 'name';
-
+    const emailid = req.user?.email || null;
     // Call the model passing the search object directly
     const result = await Inventory.searchInventory(
+      emailid,
       searchParams,
       safeSortBy,
       parsedPage,
@@ -147,15 +148,16 @@ exports.deleteInventory = async (req, res, next) => {
   try {
     const { id } = req.params;
     //const { user, reason } = req.query;
-const user = req.user?.username || req.user?.email || req.query.user || "System";
+    const user = req.user?.username || req.user?.email || req.query.user || "System";
+    const reason = req.query.reason || "User Request";
     if (!id || isNaN(id) || parseInt(id) <= 0) {
       return res.status(400).json({
         success: false,
         message: "Missing required parameter: id"
       });
     }
-
-    const deletedCount = await Inventory.deleteById(id, user, reason);
+console.log(req.user?.email)
+    const deletedCount = await Inventory.deleteById(id, user, reason, req.user?.email);
 
     if (deletedCount === 0) {
       return res.status(404).json({
