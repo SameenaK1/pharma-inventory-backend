@@ -81,6 +81,22 @@ class User {
       return false; // Soft fail so database metrics don't disrupt user login access
     }
   }
+
+  static async updatePassword(email, passwordHash) {
+    const query = `
+      UPDATE pharma.users
+      SET password_hash = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE email = $2
+      RETURNING user_id AS id, username, email, role;
+    `;
+
+    try {
+      const result = await db.query(query, [passwordHash, email]);
+      return result.rows[0] || null;
+    } catch (err) {
+      throw err;
+    }
+  }
 }
 
 module.exports = User;
