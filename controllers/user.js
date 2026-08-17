@@ -400,7 +400,14 @@ exports.resetPassword = async (req, res) => {
         error: 'No account with that email found.'
       });
     }
-
+    const user = await User.findOne(email);
+    const match = await bcrypt.compare(password, user.password);
+    if (match) {
+      return res.status(400).json({
+        success: false,
+        error: 'New password cannot match your current password.'
+      });
+    }
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);
     await User.updatePassword(sanitizedEmail, hash);
