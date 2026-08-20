@@ -1,8 +1,5 @@
 const db = require("../database");
-/**
- * Represents an inventory item with medicine details and stock information.
- * @class
- */
+const InventoryBackup = require("./inventory_backup");
 /**
  * Represents an inventory item with medicine details and stock information.
  * @class
@@ -101,33 +98,7 @@ class Inventory {
     `;
     await db.query(createTableQuery);
 
-    // Create inventory_backup table if it doesn't exist
-    const createBackupTableQuery = `
-      CREATE TABLE IF NOT EXISTS pharma.inventory_backup (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(500) NOT NULL,
-        manufacturer_name VARCHAR(500) NOT NULL,
-        type VARCHAR(50) NOT NULL,
-        pack_size_label VARCHAR(100),
-        composition1 TEXT,
-        composition2 TEXT,
-        mrp NUMERIC(10, 2),
-        batch_number VARCHAR(100) NOT NULL,
-        shelf_rack_info VARCHAR(100),         -- New column added here
-        stock_quantity INTEGER,
-        purchase_price NUMERIC(10, 2),
-        selling_price NUMERIC(10, 2),
-        stock_alert_threshold INTEGER DEFAULT 10,
-        expiry_date DATE,
-        user_name VARCHAR(500),
-        insert_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        update_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        deleted_by VARCHAR(500),
-        deleted_reason TEXT,
-        deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `;
-    await db.query(createBackupTableQuery);
+    await InventoryBackup.ensureTableExists();
   }
 
   /**
@@ -319,6 +290,26 @@ class Inventory {
     };
   }
 
+  /**
+   * Fetches all batch numbers recorded for a given medicine name.
+   * @static
+   * @async
+   * @param {string} name - Exact medicine name to look up
+   * @returns {Promise<Array<string>>} Array of batch numbers
+   * @throws {Error} If database operations fail
+   */
+  static async getBatchNumbersByName(name, emailid) {
+    const queryStr = "SELECT batch_number,mrp, selling_price, expiry_date FROM pharma.inventory WHERE name = $1 AND user_name = $2;";
+    const result = await db.query(queryStr, [name, emailid]);
+
+    return result.rows.map(row => ({
+      batchNumber: row.batch_number,
+      mrp: row.mrp,
+      sellingPrice: row.selling_price,
+      expiryDate: row.expiry_date,
+    }));
+  }
+
   static async deleteById(id, deletedBy = 'system', reason = 'User Request',useremail) {
     // Start a transaction so if anything fails, the database rolls back safely
     await db.query("BEGIN");
@@ -341,40 +332,8 @@ class Inventory {
       // The deleted item's data is sitting right here:
       const oldData = deleteResult.rows[0];
 
-      // 2. Insert that data into the backup table along with deletion metadata
-      const backupQueryStr = `
-  INSERT INTO pharma.inventory_backup (
-    id, name, manufacturer_name, type, pack_size_label, composition1, composition2,
-    mrp, stock_quantity, purchase_price, selling_price, stock_alert_threshold,
-    expiry_date, user_name, insert_date, update_date, deleted_by, deleted_reason
-  ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
-  );
-`;
-
-      const backupValues = [
-        oldData.id, // Explicitly inserting the original ID value here!
-        oldData.name,
-        oldData.manufacturer_name,
-        oldData.type,
-        oldData.pack_size_label,
-        oldData.composition1,
-        oldData.composition2,
-        oldData.mrp,
-        oldData.stock_quantity,
-        oldData.purchase_price,
-        oldData.selling_price,
-        oldData.stock_alert_threshold,
-        oldData.expiry_date,
-        oldData.user_name,
-        oldData.insert_date,
-        oldData.update_date,
-        deletedBy,
-        reason
-      ];
-
       try {
-        await db.query(backupQueryStr, backupValues);
+        await InventoryBackup.insert(oldData, deletedBy, reason);
       } catch (backupError) {
         console.error('Failed to backup inventory item:', backupError);
         throw new Error(`Failed to backup inventory item before deletion: ${backupError.message}`);
