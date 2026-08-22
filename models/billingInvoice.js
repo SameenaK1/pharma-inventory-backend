@@ -116,14 +116,14 @@ class BillingInvoice {
     }
   }
 
-  static async findByInvoiceNumber(invoiceNumber) {
-    const result = await db.query(`SELECT * FROM pharma.billing_invoice WHERE invoice_number = $1;`, [invoiceNumber]);
+  static async findByInvoiceNumber(invoiceNumber, emailid) {
+    const result = await db.query(`SELECT * FROM pharma.billing_invoice WHERE invoice_number = $1 and created_by = $2;`, [invoiceNumber, emailid]);
     return result.rows[0] || null;
   }
 
-  static async getInvoiceByNumber(invoiceNumber) {
+  static async getInvoiceByNumber(invoiceNumber, emailid) {
     await BillingInvoice.ensureTablesExist();
-    const invoice = await BillingInvoice.findByInvoiceNumber(invoiceNumber);
+    const invoice = await BillingInvoice.findByInvoiceNumber(invoiceNumber,emailid);
     if (!invoice) return null;
 
     const items = await BillingItem.findByInvoiceNumber(invoiceNumber);
@@ -176,14 +176,14 @@ class BillingInvoice {
     return result.rows[0] || null;
   }
 
-  static async list(page = 1, limit = 50) {
+  static async list(emailid, page = 1, limit = 50) {
     const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100);
     const safePage = Math.max(parseInt(page, 10) || 1, 1);
     const offset = (safePage - 1) * safeLimit;
 
     const [rowsResult, countResult] = await Promise.all([
-      db.query(`SELECT * FROM pharma.billing_invoice ORDER BY created_at DESC LIMIT $1 OFFSET $2;`, [safeLimit, offset]),
-      db.query(`SELECT COUNT(*)::int AS total FROM pharma.billing_invoice;`),
+      db.query(`SELECT * FROM pharma.billing_invoice WHERE created_by = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3;`, [emailid, safeLimit, offset]),
+      db.query(`SELECT COUNT(*)::int AS total FROM pharma.billing_invoice WHERE created_by = $1;`, [emailid]),
     ]);
 
     return {
@@ -192,9 +192,9 @@ class BillingInvoice {
     };
   }
 
-  static async listInvoices(page, limit) {
+  static async listInvoices(emailid, page, limit) {
     await BillingInvoice.ensureTablesExist();
-    return BillingInvoice.list(page, limit);
+    return BillingInvoice.list(emailid, page, limit);
   }
 }
 

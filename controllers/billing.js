@@ -177,7 +177,7 @@ exports.getInvoice = async (req, res) => {
   }
 
   try {
-    const result = await BillingInvoice.getInvoiceByNumber(invoiceNumber.trim());
+    const result = await BillingInvoice.getInvoiceByNumber(invoiceNumber.trim(),req.user?.email || null);
     if (!result) {
       return res.status(404).json({ success: false, error: `No invoice found with number "${invoiceNumber}"` });
     }
@@ -192,7 +192,7 @@ exports.listInvoices = async (req, res) => {
   const { page, limit } = req.query;
 
   try {
-    const result = await BillingInvoice.listInvoices(page, limit);
+    const result = await BillingInvoice.listInvoices(req.user?.email || null, page, limit);
     return res.status(200).json({
       success: true,
       data: result.data,
