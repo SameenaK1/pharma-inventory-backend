@@ -208,7 +208,6 @@ exports.updateInvoice = async (req, res) => {
   const { invoiceNumber } = req.params;
   const payload = req.body || {};
   const items = payload.items;
-
   if (!invoiceNumber || !invoiceNumber.trim()) {
     return res.status(400).json({ success: false, error: "Invoice number is required" });
   }

@@ -191,52 +191,6 @@ class BillingInvoice {
     return { invoice, items };
   }
 
-  // Updates only the editable header fields of an invoice (line items and totals stay locked).
-  static async update(invoiceNumber, updates, updatedBy = null) {
-    const columnMap = {
-      doctorName: "doctor_name",
-      paymentType: "payment_type",
-      customerName: "customer_name",
-      phoneNumber: "phone_number",
-      patientAge: "patient_age",
-      patientGender: "patient_gender",
-      address: "address",
-      gstin: "gstin",
-    };
-
-    const fields = [];
-    const values = [];
-    let index = 1;
-
-    for (const [field, value] of Object.entries(updates)) {
-      const column = columnMap[field];
-      if (!column) continue;
-
-      fields.push(`${column} = $${index++}`);
-
-      if (field === "patientAge") {
-        values.push(value === "" || value == null ? null : Number(value));
-      } else {
-        values.push(value === "" || value == null ? null : value);
-      }
-    }
-
-    if (fields.length === 0) return null;
-
-    fields.push(`updated_by = $${index++}`);
-    values.push(updatedBy);
-
-    values.push(invoiceNumber);
-    const invoicePlaceholder = `$${index}`;
-
-    const result = await db.query(
-      `UPDATE pharma.billing_invoice SET ${fields.join(", ")} WHERE invoice_number = ${invoicePlaceholder} RETURNING *;`,
-      values
-    );
-
-    return result.rows[0] || null;
-  }
-
   static async list(emailid, page = 1, limit = 50) {
     const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100);
     const safePage = Math.max(parseInt(page, 10) || 1, 1);
