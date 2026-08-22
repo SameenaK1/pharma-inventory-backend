@@ -6,6 +6,7 @@ const router = express.Router();
 router.use(reqAuth);
 router.post("/invoice", billing.createInvoice);
 router.get("/invoice/:invoiceNumber", billing.getInvoice);
+router.patch("/invoice/:invoiceNumber", billing.updateInvoice);
 router.get("/invoices", billing.listInvoices);
 
 module.exports = router;

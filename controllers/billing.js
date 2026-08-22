@@ -204,3 +204,75 @@ exports.listInvoices = async (req, res) => {
   }
 };
 
+exports.updateInvoice = async (req, res) => {
+  const { invoiceNumber } = req.params;
+
+  if (!invoiceNumber || !invoiceNumber.trim()) {
+    return res.status(400).json({ success: false, error: "Invoice number is required" });
+  }
+
+  const payload = req.body || {};
+
+  // Line items and monetary totals are immutable once an invoice is generated;
+  // only these customer / payment header fields may be edited.
+  const allowedFields = [
+    "doctorName",
+    "paymentType",
+    "customerName",
+    "phoneNumber",
+    "patientAge",
+    "patientGender",
+    "address",
+    "gstin",
+  ];
+
+  const updates = {};
+  for (const field of allowedFields) {
+    if (payload[field] !== undefined) {
+      updates[field] = payload[field];
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ success: false, error: "No editable fields were provided" });
+  }
+
+  if (updates.phoneNumber != null && updates.phoneNumber !== "") {
+    if (!PHONE_REGEX.test(String(updates.phoneNumber).trim())) {
+      return res.status(400).json({ success: false, error: "phoneNumber must be a valid 10-digit mobile number" });
+    }
+  }
+
+  if (updates.patientAge != null && updates.patientAge !== "") {
+    const age = Number(updates.patientAge);
+    if (!Number.isFinite(age) || age <= 2) {
+      return res.status(400).json({ success: false, error: "patientAge must be greater than 2" });
+    }
+  }
+
+  const doctorNameError = validateNameField(updates.doctorName, "doctorName");
+  if (doctorNameError) {
+    return res.status(400).json({ success: false, error: doctorNameError });
+  }
+
+  const customerNameError = validateNameField(updates.customerName, "customerName");
+  if (customerNameError) {
+    return res.status(400).json({ success: false, error: customerNameError });
+  }
+
+  try {
+    const updated = await BillingInvoice.update(invoiceNumber.trim(), updates, req.user?.email || null);
+    if (!updated) {
+      return res.status(404).json({ success: false, error: `No invoice found with number "${invoiceNumber}"` });
+    }
+    return res.status(200).json({
+      success: true,
+      message: "Invoice updated successfully",
+      data: updated,
+    });
+  } catch (err) {
+    console.error("Invoice update error:", err);
+    return res.status(500).json({ success: false, error: "Failed to update invoice" });
+  }
+};
+
