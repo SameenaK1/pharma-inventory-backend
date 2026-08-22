@@ -73,6 +73,13 @@ class BillingItem {
     );
     return result.rows;
   }
+
+  // Full replace keeps item_id sequencing simple and avoids diffing add/edit/remove client-side.
+  static async replaceForInvoice(client, invoiceNumber, items) {
+    await client.query(`DELETE FROM pharma.billing_items WHERE invoice_number = $1;`, [invoiceNumber]);
+    if (!items.length) return [];
+    return BillingItem.bulkCreate(client, invoiceNumber, items);
+  }
 }
 
 module.exports = BillingItem;

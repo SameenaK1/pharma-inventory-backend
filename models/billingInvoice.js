@@ -121,6 +121,67 @@ class BillingInvoice {
     return result.rows[0] || null;
   }
 
+  static async update(client, invoiceNumber, emailid, invoice) {
+    const query = `
+      UPDATE pharma.billing_invoice SET
+        doctor_name = $1, payment_type = $2, customer_name = $3, phone_number = $4, patient_age = $5,
+        patient_gender = $6, address = $7, gstin = $8, tax_breakdown = $9, total_quantity = $10,
+        gross_amount = $11, discount_amount = $12, subtotal = $13, flat_discount = $14, final_payable = $15,
+        updated_by = $16
+      WHERE invoice_number = $17 AND created_by = $18
+      RETURNING *;
+    `;
+
+    const values = [
+      invoice.doctorName || null,
+      invoice.paymentType || "Cash",
+      invoice.customerName || null,
+      invoice.phoneNumber || null,
+      invoice.patientAge ?? null,
+      invoice.patientGender || null,
+      invoice.address || null,
+      invoice.gstin || null,
+      JSON.stringify(invoice.taxBreakdown || []),
+      invoice.totalQuantity,
+      invoice.grossAmount,
+      invoice.discountAmount ?? 0,
+      invoice.subtotal,
+      invoice.flatDiscount ?? 0,
+      invoice.finalPayable,
+      invoice.updatedBy || null,
+      invoiceNumber,
+      emailid,
+    ];
+
+    const result = await client.query(query, values);
+    return result.rows[0] || null;
+  }
+
+  static async updateInvoiceWithItems(invoiceNumber, emailid, invoiceData, items) {
+    await BillingInvoice.ensureTablesExist();
+
+    const client = await db.pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const invoice = await BillingInvoice.update(client, invoiceNumber, emailid, invoiceData);
+      if (!invoice) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+
+      const savedItems = await BillingItem.replaceForInvoice(client, invoice.invoice_number, items);
+
+      await client.query("COMMIT");
+      return { invoice, items: savedItems };
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
   static async getInvoiceByNumber(invoiceNumber, emailid) {
     await BillingInvoice.ensureTablesExist();
     const invoice = await BillingInvoice.findByInvoiceNumber(invoiceNumber,emailid);
