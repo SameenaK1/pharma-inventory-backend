@@ -116,74 +116,89 @@ class BillingInvoice {
     }
   }
 
-  static async findByInvoiceNumber(invoiceNumber) {
-    const result = await db.query(`SELECT * FROM pharma.billing_invoice WHERE invoice_number = $1;`, [invoiceNumber]);
+  static async findByInvoiceNumber(invoiceNumber, emailid) {
+    const result = await db.query(`SELECT * FROM pharma.billing_invoice WHERE invoice_number = $1 and created_by = $2;`, [invoiceNumber, emailid]);
     return result.rows[0] || null;
   }
 
-  static async getInvoiceByNumber(invoiceNumber) {
+  static async update(client, invoiceNumber, emailid, invoice) {
+    const query = `
+      UPDATE pharma.billing_invoice SET
+        doctor_name = $1, payment_type = $2, customer_name = $3, phone_number = $4, patient_age = $5,
+        patient_gender = $6, address = $7, gstin = $8, tax_breakdown = $9, total_quantity = $10,
+        gross_amount = $11, discount_amount = $12, subtotal = $13, flat_discount = $14, final_payable = $15,
+        updated_by = $16
+      WHERE invoice_number = $17 AND created_by = $18
+      RETURNING *;
+    `;
+
+    const values = [
+      invoice.doctorName || null,
+      invoice.paymentType || "Cash",
+      invoice.customerName || null,
+      invoice.phoneNumber || null,
+      invoice.patientAge ?? null,
+      invoice.patientGender || null,
+      invoice.address || null,
+      invoice.gstin || null,
+      JSON.stringify(invoice.taxBreakdown || []),
+      invoice.totalQuantity,
+      invoice.grossAmount,
+      invoice.discountAmount ?? 0,
+      invoice.subtotal,
+      invoice.flatDiscount ?? 0,
+      invoice.finalPayable,
+      invoice.updatedBy || null,
+      invoiceNumber,
+      emailid,
+    ];
+
+    const result = await client.query(query, values);
+    return result.rows[0] || null;
+  }
+
+  static async updateInvoiceWithItems(invoiceNumber, emailid, invoiceData, items) {
     await BillingInvoice.ensureTablesExist();
-    const invoice = await BillingInvoice.findByInvoiceNumber(invoiceNumber);
+
+    const client = await db.pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const invoice = await BillingInvoice.update(client, invoiceNumber, emailid, invoiceData);
+      if (!invoice) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+
+      const savedItems = await BillingItem.replaceForInvoice(client, invoice.invoice_number, items);
+
+      await client.query("COMMIT");
+      return { invoice, items: savedItems };
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  static async getInvoiceByNumber(invoiceNumber, emailid) {
+    await BillingInvoice.ensureTablesExist();
+    const invoice = await BillingInvoice.findByInvoiceNumber(invoiceNumber,emailid);
     if (!invoice) return null;
 
     const items = await BillingItem.findByInvoiceNumber(invoiceNumber);
     return { invoice, items };
   }
 
-  // Updates only the editable header fields of an invoice (line items and totals stay locked).
-  static async update(invoiceNumber, updates, updatedBy = null) {
-    const columnMap = {
-      doctorName: "doctor_name",
-      paymentType: "payment_type",
-      customerName: "customer_name",
-      phoneNumber: "phone_number",
-      patientAge: "patient_age",
-      patientGender: "patient_gender",
-      address: "address",
-      gstin: "gstin",
-    };
-
-    const fields = [];
-    const values = [];
-    let index = 1;
-
-    for (const [field, value] of Object.entries(updates)) {
-      const column = columnMap[field];
-      if (!column) continue;
-
-      fields.push(`${column} = $${index++}`);
-
-      if (field === "patientAge") {
-        values.push(value === "" || value == null ? null : Number(value));
-      } else {
-        values.push(value === "" || value == null ? null : value);
-      }
-    }
-
-    if (fields.length === 0) return null;
-
-    fields.push(`updated_by = $${index++}`);
-    values.push(updatedBy);
-
-    values.push(invoiceNumber);
-    const invoicePlaceholder = `$${index}`;
-
-    const result = await db.query(
-      `UPDATE pharma.billing_invoice SET ${fields.join(", ")} WHERE invoice_number = ${invoicePlaceholder} RETURNING *;`,
-      values
-    );
-
-    return result.rows[0] || null;
-  }
-
-  static async list(page = 1, limit = 50) {
+  static async list(emailid, page = 1, limit = 50) {
     const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100);
     const safePage = Math.max(parseInt(page, 10) || 1, 1);
     const offset = (safePage - 1) * safeLimit;
 
     const [rowsResult, countResult] = await Promise.all([
-      db.query(`SELECT * FROM pharma.billing_invoice ORDER BY created_at DESC LIMIT $1 OFFSET $2;`, [safeLimit, offset]),
-      db.query(`SELECT COUNT(*)::int AS total FROM pharma.billing_invoice;`),
+      db.query(`SELECT * FROM pharma.billing_invoice WHERE created_by = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3;`, [emailid, safeLimit, offset]),
+      db.query(`SELECT COUNT(*)::int AS total FROM pharma.billing_invoice WHERE created_by = $1;`, [emailid]),
     ]);
 
     return {
@@ -192,9 +207,9 @@ class BillingInvoice {
     };
   }
 
-  static async listInvoices(page, limit) {
+  static async listInvoices(emailid, page, limit) {
     await BillingInvoice.ensureTablesExist();
-    return BillingInvoice.list(page, limit);
+    return BillingInvoice.list(emailid, page, limit);
   }
 }
 

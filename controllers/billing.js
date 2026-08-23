@@ -177,7 +177,7 @@ exports.getInvoice = async (req, res) => {
   }
 
   try {
-    const result = await BillingInvoice.getInvoiceByNumber(invoiceNumber.trim());
+    const result = await BillingInvoice.getInvoiceByNumber(invoiceNumber.trim(),req.user?.email || null);
     if (!result) {
       return res.status(404).json({ success: false, error: `No invoice found with number "${invoiceNumber}"` });
     }
@@ -192,7 +192,7 @@ exports.listInvoices = async (req, res) => {
   const { page, limit } = req.query;
 
   try {
-    const result = await BillingInvoice.listInvoices(page, limit);
+    const result = await BillingInvoice.listInvoices(req.user?.email || null, page, limit);
     return res.status(200).json({
       success: true,
       data: result.data,
@@ -206,69 +206,106 @@ exports.listInvoices = async (req, res) => {
 
 exports.updateInvoice = async (req, res) => {
   const { invoiceNumber } = req.params;
-
+  const payload = req.body || {};
+  const items = payload.items;
   if (!invoiceNumber || !invoiceNumber.trim()) {
     return res.status(400).json({ success: false, error: "Invoice number is required" });
   }
 
-  const payload = req.body || {};
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ success: false, error: "At least one billing item is required" });
+  }
 
-  // Line items and monetary totals are immutable once an invoice is generated;
-  // only these customer / payment header fields may be edited.
-  const allowedFields = [
-    "doctorName",
-    "paymentType",
-    "customerName",
-    "phoneNumber",
-    "patientAge",
-    "patientGender",
-    "address",
-    "gstin",
-  ];
-
-  const updates = {};
-  for (const field of allowedFields) {
-    if (payload[field] !== undefined) {
-      updates[field] = payload[field];
+  for (let i = 0; i < items.length; i++) {
+    const itemError = validateInvoiceItem(items[i], i);
+    if (itemError) {
+      return res.status(400).json({ success: false, error: itemError });
     }
   }
 
-  if (Object.keys(updates).length === 0) {
-    return res.status(400).json({ success: false, error: "No editable fields were provided" });
+  const totalQuantity = Number(payload.totalQuantity);
+  const grossAmount = Number(payload.grossAmount);
+  const subtotal = Number(payload.subtotal);
+  const finalPayable = Number(payload.finalPayable);
+  const flatDiscount = Number(payload.flatDiscount ?? 0);
+  const discountAmount = Number(payload.discountAmount ?? 0);
+
+  if (!Number.isFinite(totalQuantity) || totalQuantity <= 0) {
+    return res.status(400).json({ success: false, error: "totalQuantity must be greater than zero" });
+  }
+  if (!Number.isFinite(grossAmount) || grossAmount < 0) {
+    return res.status(400).json({ success: false, error: "grossAmount must be a non-negative number" });
+  }
+  if (!Number.isFinite(subtotal) || subtotal < 0) {
+    return res.status(400).json({ success: false, error: "subtotal must be a non-negative number" });
+  }
+  if (!Number.isFinite(finalPayable) || finalPayable < 0) {
+    return res.status(400).json({ success: false, error: "finalPayable cannot be less than zero" });
+  }
+  if (!Number.isFinite(flatDiscount) || flatDiscount < 0) {
+    return res.status(400).json({ success: false, error: "flatDiscount must be a non-negative number" });
+  }
+  if (flatDiscount > subtotal) {
+    return res.status(400).json({ success: false, error: "flatDiscount cannot be greater than subtotal" });
+  }
+  if (!Number.isFinite(discountAmount) || discountAmount < 0) {
+    return res.status(400).json({ success: false, error: "discountAmount must be a non-negative number" });
   }
 
-  if (updates.phoneNumber != null && updates.phoneNumber !== "") {
-    if (!PHONE_REGEX.test(String(updates.phoneNumber).trim())) {
-      return res.status(400).json({ success: false, error: "phoneNumber must be a valid 10-digit mobile number" });
-    }
+  if (payload.phoneNumber && !PHONE_REGEX.test(String(payload.phoneNumber).trim())) {
+    return res.status(400).json({ success: false, error: "phoneNumber must be a valid 10-digit mobile number" });
   }
 
-  if (updates.patientAge != null && updates.patientAge !== "") {
-    const age = Number(updates.patientAge);
+  if (payload.patientAge != null && payload.patientAge !== "") {
+    const age = Number(payload.patientAge);
     if (!Number.isFinite(age) || age <= 2) {
       return res.status(400).json({ success: false, error: "patientAge must be greater than 2" });
     }
   }
 
-  const doctorNameError = validateNameField(updates.doctorName, "doctorName");
+  const doctorNameError = validateNameField(payload.doctorName, "doctorName");
   if (doctorNameError) {
     return res.status(400).json({ success: false, error: doctorNameError });
   }
-
-  const customerNameError = validateNameField(updates.customerName, "customerName");
+  const customerNameError = validateNameField(payload.customerName, "customerName");
   if (customerNameError) {
     return res.status(400).json({ success: false, error: customerNameError });
   }
 
+  const invoiceData = {
+    doctorName: payload.doctorName,
+    paymentType: payload.paymentType,
+    customerName: payload.customerName,
+    phoneNumber: payload.phoneNumber,
+    patientAge: payload.patientAge != null ? Number(payload.patientAge) : null,
+    patientGender: payload.patientGender,
+    address: payload.address,
+    gstin: payload.gstin,
+    taxBreakdown: payload.taxBreakdown,
+    totalQuantity,
+    grossAmount,
+    discountAmount,
+    subtotal,
+    flatDiscount,
+    finalPayable,
+    // Trust the authenticated session, not client-supplied input, for the audit trail.
+    updatedBy: req.user?.email || null,
+  };
+
   try {
-    const updated = await BillingInvoice.update(invoiceNumber.trim(), updates, req.user?.email || null);
-    if (!updated) {
+    const result = await BillingInvoice.updateInvoiceWithItems(
+      invoiceNumber.trim(),
+      req.user?.email || null,
+      invoiceData,
+      items
+    );
+    if (!result) {
       return res.status(404).json({ success: false, error: `No invoice found with number "${invoiceNumber}"` });
     }
     return res.status(200).json({
       success: true,
       message: "Invoice updated successfully",
-      data: updated,
+      data: result,
     });
   } catch (err) {
     console.error("Invoice update error:", err);
