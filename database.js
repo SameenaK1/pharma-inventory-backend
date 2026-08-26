@@ -11,16 +11,15 @@ const pool = new Pool({
   connectionString: connectionString,
   ssl: {
     rejectUnauthorized
-  }
+  },
+  // Every connection defaults to UTC; force IST via the startup packet so
+  // CURRENT_DATE/CURRENT_TIMESTAMP reflect local time. Setting it here avoids
+  // firing an un-awaited client.query() in a 'connect' handler, which caused a
+  // pg DeprecationWarning when the pool reused that client for the next query.
+  options: "-c timezone=Asia/Kolkata",
 });
 pool.on('error', (err) => {
   console.error('Unexpected error on idle PostgreSQL client:', err);
-});
-// Every connection defaults to UTC; force IST so CURRENT_DATE/CURRENT_TIMESTAMP reflect local time.
-pool.on('connect', (client) => {
-  client.query("SET TIME ZONE 'Asia/Kolkata';").catch((err) => {
-    console.error('Failed to set session timezone to Asia/Kolkata:', err.message);
-  });
 });
 
 (async () => {
