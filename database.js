@@ -12,10 +12,6 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized
   },
-  // Every connection defaults to UTC; force IST via the startup packet so
-  // CURRENT_DATE/CURRENT_TIMESTAMP reflect local time. Setting it here avoids
-  // firing an un-awaited client.query() in a 'connect' handler, which caused a
-  // pg DeprecationWarning when the pool reused that client for the next query.
   options: "-c timezone=Asia/Kolkata",
 });
 pool.on('error', (err) => {
