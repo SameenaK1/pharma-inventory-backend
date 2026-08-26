@@ -11,16 +11,11 @@ const pool = new Pool({
   connectionString: connectionString,
   ssl: {
     rejectUnauthorized
-  }
+  },
+  options: "-c timezone=Asia/Kolkata",
 });
 pool.on('error', (err) => {
   console.error('Unexpected error on idle PostgreSQL client:', err);
-});
-// Every connection defaults to UTC; force IST so CURRENT_DATE/CURRENT_TIMESTAMP reflect local time.
-pool.on('connect', (client) => {
-  client.query("SET TIME ZONE 'Asia/Kolkata';").catch((err) => {
-    console.error('Failed to set session timezone to Asia/Kolkata:', err.message);
-  });
 });
 
 (async () => {
