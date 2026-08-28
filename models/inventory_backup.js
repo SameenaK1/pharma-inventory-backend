@@ -55,11 +55,11 @@ class InventoryBackup {
   static async insert(oldData, deletedBy = "system", reason = "User Request") {
     const backupQueryStr = `
       INSERT INTO pharma.inventory_backup (
-        id, name, manufacturer_name, type, pack_size_label, composition1, composition2,
+        id, name, manufacturer_name, type, pack_size_label, composition1, 
         mrp, stock_quantity, purchase_price, selling_price, stock_alert_threshold,
         expiry_date, user_name, insert_date, update_date, deleted_by, deleted_reason
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
       );
     `;
 
@@ -70,7 +70,6 @@ class InventoryBackup {
       oldData.type,
       oldData.pack_size_label,
       oldData.composition1,
-      oldData.composition2,
       oldData.mrp,
       oldData.stock_quantity,
       oldData.purchase_price,

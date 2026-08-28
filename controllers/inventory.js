@@ -16,7 +16,6 @@ exports.addInventory = async (req, res, next) => {
   const type = payload.type;
   const packSizeLabel = payload.packsizelabel;
   const composition1 = payload.composition1;
-  const composition2 = payload.composition2;
   const mrp = payload.mrp ? parseFloat(payload.mrp) : null;
   const batchNumberRaw = payload.batchnumber;
   const batchNumber = typeof batchNumberRaw === "string" ? batchNumberRaw : (batchNumberRaw == null ? "" : String(batchNumberRaw));
@@ -62,7 +61,7 @@ exports.addInventory = async (req, res, next) => {
   }
 
   try {
-    const new_inventory = new Inventory(name, manufacturerName, type, packSizeLabel, composition1, composition2, mrp, batchNumber, shelfRackInfo, stockQuantity, purchasePrice, sellingPrice, stockAlertThreshold, expiryDate, userName, insertDate, updateDate);
+    const new_inventory = new Inventory(name, manufacturerName, type, packSizeLabel, composition1, mrp, batchNumber, shelfRackInfo, stockQuantity, purchasePrice, sellingPrice, stockAlertThreshold, expiryDate, userName, insertDate, updateDate);
     const response = await new_inventory.addInventory();
 
     const savedItem = response.rows?.[0];

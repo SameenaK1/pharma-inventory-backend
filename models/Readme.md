@@ -27,7 +27,6 @@ models/
 - `type` (string) - The type/category of medicine
 - `packSizeLabel` (string) - The label for the pack size
 - `composition1` (string) - First composition ingredient
-- `composition2` (string) - Second composition ingredient
 - `mrp` (number) - Maximum Retail Price
 - `stockQuantity` (number) - Current stock quantity
 - `purchasePrice` (number) - Purchase price per unit
@@ -51,7 +50,7 @@ models/
 - **Purpose**: Searches inventory records with filtering, sorting, and pagination
 - **Type**: Static method
 - **Parameters**:
-  - `searchParams` (Object) - Search criteria object with optional fields: name, manufacturer_name, type, composition1, composition2
+  - `searchParams` (Object) - Search criteria object with optional fields: name, manufacturer_name, type, composition1
   - `userOrderBy` (string) - Field to sort results by (default: 'name')
   - `page` (number) - Page number for pagination (default: 1)
   - `limit` (number) - Number of records per page (default: 50)
@@ -185,7 +184,6 @@ models/
 - `type` (string) - Medicine type
 - `packSizeLabel` (string) - Pack size label
 - `composition1` (string) - First composition ingredient
-- `composition2` (string) - Second composition ingredient
 
 **Static Methods**:
 
@@ -232,7 +230,6 @@ models/
 - `type` (string) - Medicine type
 - `packSizeLabel` (string) - Pack size label
 - `composition1` (string) - First composition ingredient
-- `composition2` (string) - Second composition ingredient
 
 **Static Properties**:
 
@@ -295,7 +292,6 @@ CREATE TABLE pharma.inventory (
   type VARCHAR(50) NOT NULL,
   pack_size_label VARCHAR(100),
   composition1 TEXT,
-  composition2 TEXT,
   mrp NUMERIC(10, 2),
   stock_quantity INTEGER,
   purchase_price NUMERIC(10, 2),
@@ -331,19 +327,18 @@ CREATE TABLE pharma.manufacturer_names (
 );
 ```
 
-### pharma.medicine_raw
+### pharma.medicine_ttmg_stg
 ```sql
-CREATE TABLE pharma.medicine_raw (
+CREATE TABLE pharma.medicine_ttmg_stg (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   manufacturer_name VARCHAR(100) NOT NULL,
   type VARCHAR(50) NOT NULL,
   pack_size_label VARCHAR(100),
   composition1 TEXT,
-  composition2 TEXT
 );
 
-CREATE INDEX idx_medicine_name ON pharma.medicine_raw (name);
+CREATE INDEX idx_medicine_name ON pharma.medicine_ttmg_stg (name);
 ```
 
 ---
