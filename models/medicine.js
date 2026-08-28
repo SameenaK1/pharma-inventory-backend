@@ -21,7 +21,16 @@ class Medicine {
 
     // Consider using prepared statements with parameterized queries for better security
     const query = `
-      SELECT sku_id, name, manufacturer_name, type, price, pack_size_label, short_composition
+      SELECT sku_id, name, manufacturer_name, type, price, pack_size_label,  REPLACE(
+          REGEXP_REPLACE(
+            COALESCE(short_composition::text, ''),
+            '[{}"]',
+            '',
+            'g'
+          ),
+          '+',
+          ','
+        ) AS short_composition
       FROM pharma.medicine_ttmg_stg
       WHERE LOWER(name) LIKE LOWER($1)
       ORDER BY name ASC

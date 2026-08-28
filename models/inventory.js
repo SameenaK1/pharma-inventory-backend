@@ -117,7 +117,7 @@ class Inventory {
         mrp, batch_number, shelf_rack_info, stock_quantity, purchase_price, selling_price, stock_alert_threshold,
         expiry_date, user_name, insert_date, update_date
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
       )
       ON CONFLICT ON CONSTRAINT unique_medicine_identity 
       DO UPDATE SET 
