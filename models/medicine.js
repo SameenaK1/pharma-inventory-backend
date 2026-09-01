@@ -1,7 +1,7 @@
 const db = require("../database");
 
 class Medicine {
-  constructor(id, name, manufacturerName, type,price, packSizeLabel, short_composition) {
+  constructor(id, name, manufacturerName, type,price, packSizeLabel, short_composition, Image_url) {
     this.sku_id = id;
     this.name = name;
     this.manufacturerName = manufacturerName;
@@ -9,6 +9,7 @@ class Medicine {
     this.price = price;
     this.packSizeLabel = packSizeLabel;
     this.short_composition = short_composition;
+    this.Image_url = Image_url;
   }
 
 
@@ -21,7 +22,7 @@ class Medicine {
 
     // Consider using prepared statements with parameterized queries for better security
     const query = `
-      SELECT sku_id, name, manufacturer_name, type, price, pack_size_label,  REPLACE(
+      SELECT sku_id, name, manufacturer_name, type, price, pack_size_label,Image_url,  REPLACE(
           REGEXP_REPLACE(
             COALESCE(short_composition::text, ''),
             '[{}"]',
