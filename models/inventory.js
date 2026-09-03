@@ -12,7 +12,6 @@ class Inventory {
    * @param {string} type - The type/category of medicine
    * @param {string} packSizeLabel - The label for the pack size
    * @param {string} composition1 - First composition ingredient
-   * @param {string} composition2 - Second composition ingredient
    * @param {number} mrp - Maximum Retail Price
    * @param {number} stockQuantity - Current stock quantity
    * @param {number} purchasePrice - Purchase price per unit
@@ -29,7 +28,6 @@ class Inventory {
     type,
     packSizeLabel,
     composition1,
-    composition2,
     mrp,
     batchNumber,
     shelfRackInfo,
@@ -47,7 +45,6 @@ class Inventory {
     this.type = type;
     this.packSizeLabel = packSizeLabel;
     this.composition1 = composition1;
-    this.composition2 = composition2;
     this.mrp = mrp;
     this.batchNumber = batchNumber;
     this.shelfRackInfo = shelfRackInfo;
@@ -81,7 +78,6 @@ class Inventory {
     type VARCHAR(50) NOT NULL,
     pack_size_label VARCHAR(100),
     composition1 TEXT,
-    composition2 TEXT,
     mrp NUMERIC(10, 2),
     batch_number VARCHAR(100) NOT NULL,
     shelf_rack_info VARCHAR(100),         -- New column added here
@@ -117,18 +113,17 @@ class Inventory {
 
     const query = `
       INSERT INTO pharma.inventory (
-        name, manufacturer_name, type, pack_size_label, composition1, composition2,
+        name, manufacturer_name, type, pack_size_label, composition1, 
         mrp, batch_number, shelf_rack_info, stock_quantity, purchase_price, selling_price, stock_alert_threshold,
         expiry_date, user_name, insert_date, update_date
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
       )
       ON CONFLICT ON CONSTRAINT unique_medicine_identity 
       DO UPDATE SET 
         -- 1. Increment the stock quantity by adding the incoming stock
         stock_quantity = EXCLUDED.stock_quantity,
         type = EXCLUDED.type,
-        composition2 = EXCLUDED.composition2,
         mrp = EXCLUDED.mrp,
         shelf_rack_info = EXCLUDED.shelf_rack_info,
         purchase_price = EXCLUDED.purchase_price,
@@ -145,7 +140,6 @@ class Inventory {
       this.type,
       this.packSizeLabel,
       this.composition1,
-      this.composition2,
       this.mrp,
       this.batchNumber,
       this.shelfRackInfo,
@@ -169,7 +163,6 @@ class Inventory {
    * @param {string} [searchParams.manufacturer_name] - Manufacturer name to search for (case-insensitive)
    * @param {string} [searchParams.type] - Medicine type to search for (case-insensitive)
    * @param {string} [searchParams.composition1] - First composition to search for (case-insensitive)
-   * @param {string} [searchParams.composition2] - Second composition to search for (case-insensitive)
    * @param {string} [userOrderBy=name] - Field to sort results by (default: 'name')
    * @param {number} [page=1] - Page number for pagination (default: 1)
    * @param {number} [limit=50] - Number of records per page (default: 50)
@@ -185,7 +178,7 @@ class Inventory {
       console.warn("Table existence check skipped/failed:", tableErr.message);
     }
 
-    const allowedColumns = ["name", "manufacturer_name", "type", "composition1", "composition2", "batch_number"];
+    const allowedColumns = ["name", "manufacturer_name", "type", "composition1", "batch_number"];
 
     const safeUserOrderBy = allowedColumns.includes(userOrderBy) ? userOrderBy : "name";
 
@@ -254,7 +247,7 @@ class Inventory {
 
     // Sorting
     if (userOrderBy !== "insert_date" && allowedColumns.includes(userOrderBy)) {
-      const textColumns = ["name", "manufacturer_name", "type", "pack_size_label", "composition1", "composition2", "batch_number", "user_name"];
+      const textColumns = ["name", "manufacturer_name", "type", "pack_size_label", "composition1", "batch_number", "user_name"];
       if (textColumns.includes(safeUserOrderBy)) {
         queryStr += ` ORDER BY LOWER(${safeUserOrderBy}) ASC`;
       } else {

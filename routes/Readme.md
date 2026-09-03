@@ -43,7 +43,6 @@ routes/
   - `manufacturer_name` (optional) - Manufacturer name filter
   - `type` (optional) - Medicine type filter
   - `composition1` (optional) - First composition filter
-  - `composition2` (optional) - Second composition filter
   - `sortBy` (optional) - Field to sort by (default: 'name')
   - `page` (optional) - Page number (default: 1)
   - `limit` (optional) - Records per page (default: 50, max: 50)
@@ -152,7 +151,6 @@ routes/
   - `type` (required) - Medicine type
   - `pack_size_label` (required) - Pack size label
   - `composition1` (optional) - First composition ingredient
-  - `composition2` (optional) - Second composition ingredient
 - **Response**: JSON response with success status and inserted ID
 - **Features**:
   - Input validation for all required fields
